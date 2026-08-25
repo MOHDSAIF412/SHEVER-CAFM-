@@ -29,19 +29,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    // If no user saved, default to Admin for easy initial access
-    if (!user) {
-      cafmDataService.getUsers().then((users) => {
-        const adminUser = users.find((u) => u.role_id === 'admin') || users[0];
-        if (adminUser) {
-          setUser(adminUser);
-          localStorage.setItem('shever_auth_user', JSON.stringify(adminUser));
-        }
-        setLoading(false);
-      });
-    } else {
-      setLoading(false);
-    }
+    // Set loading to false; if user is null, app will properly require login
+    setLoading(false);
   }, []);
 
   const login = async (identifier: string, inputPassword?: string): Promise<boolean> => {
