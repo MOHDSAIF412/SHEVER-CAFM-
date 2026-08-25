@@ -60,9 +60,23 @@ missing tables — the app had nowhere to write those records.
 
 Run `database/06_create_missing_tables.sql` next. It creates **only** what is
 absent and never drops or empties an existing table, so the accounts and
-passwords from step 1 survive. It also seeds the master data the app needs to
-function (SLA levels, floors, locations, subcategories, a default PPM checklist
-and a starter stock list) wherever those are empty.
+passwords from step 1 survive.
+
+It creates **no buildings, floors, locations, assets, work orders or PPM
+plans** — you add those in the app and they save to the cloud for everyone.
+Those tables start empty.
+
+It does seed the reference data the app has no screen for, because without it
+every dropdown is empty and nothing can be created at all:
+
+| Seeded | Why it has to be |
+| --- | --- |
+| Categories, Subcategories | Picked when adding an asset or work order; no UI to create them |
+| SLA levels | `work_orders.priority` points at this table — work orders cannot save without it |
+| PPM checklists | Every PPM plan must reference one |
+| Materials | The Materials page is read-only, so stock has to be inserted here |
+
+Each block runs only if that table is empty, so re-running changes nothing.
 
 **Never run `01_schema.sql` to fix missing tables.** It starts with
 `DROP TABLE ... CASCADE` and would delete your accounts.
@@ -70,10 +84,14 @@ and a starter stock list) wherever those are empty.
 Expect `tables the app can reach` to read **26** and `still missing` to read
 **none**.
 
-> After this, Assets and Work Orders will look **empty** in the app. That is
-> correct — the lists you saw before were the demo records built into the
+> After this, Buildings, Assets and Work Orders will look **empty** in the app.
+> That is correct — the lists you saw before were demo records built into the
 > JavaScript bundle, never real data. From now on what you see is what is
 > actually in the database.
+>
+> Start by adding a building under **Facilities**, then its floors and
+> locations, then assets. Everything you create is stored in the cloud and
+> visible to every other user straight away.
 
 ### If the migration reports an error
 

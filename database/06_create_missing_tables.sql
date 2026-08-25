@@ -14,6 +14,14 @@
 -- table, so the profiles and passwords created by 05_cloud_sync_fix.sql are
 -- left alone.
 --
+-- IT DOES NOT CREATE ANY BUILDINGS, FLOORS, LOCATIONS, ASSETS, WORK ORDERS OR
+-- PPM PLANS. You add those in the app and they save to the cloud, where every
+-- other device sees them. The tables start empty.
+--
+-- It DOES seed the reference data the app has no screen for - categories,
+-- subcategories, SLA levels, a default PPM checklist and a starter stock list.
+-- Without those the dropdowns are empty and nothing can be created at all.
+--
 -- Do NOT run 01_schema.sql instead: it begins with DROP TABLE ... CASCADE and
 -- would destroy your accounts.
 --
@@ -441,20 +449,23 @@ INSERT INTO sla_configs (id, priority, response_time_minutes, resolution_time_ho
 ON CONFLICT (id) DO NOTHING;
 
 -- ------------------------------------------------------------------------------
--- 5. Master data - only where it is missing, matched by code so nothing
---    duplicates whatever you already have
+-- 5. Reference data ONLY
+--
+--    Buildings, floors, locations, assets, work orders and PPM plans are NOT
+--    seeded - you create those in the app and they save to the cloud.
+--
+--    What is seeded below is reference data the app has no screen for. Without
+--    it every dropdown is empty and nothing can be created at all:
+--      * categories / subcategories - chosen when adding an asset or work order
+--      * sla_configs               - work_orders.priority points at it
+--      * ppm_checklists            - every PPM plan must reference one
+--      * materials                 - the Materials page is read-only
+--
+--    Each block runs only if that table is empty, so nothing is duplicated and
+--    re-running changes nothing.
 -- ------------------------------------------------------------------------------
 
--- 5a. Buildings, if you have none at all
-INSERT INTO buildings (code, name, address, city, total_floors, contact_person, contact_phone)
-SELECT * FROM (VALUES
-    ('BLD-ST-01', 'Shever Corporate Tower',      'Sheikh Zayed Road, Financial District', 'Dubai', 35, 'Tariq Mansoor',  '+971 50 123 4567'),
-    ('BLD-OB-02', 'Oasis Business Bay Complex',  'Marasi Drive, Business Bay',            'Dubai', 22, 'Fatima Al Zahra','+971 55 987 6543'),
-    ('BLD-JL-03', 'Jumeirah Lakes Heights',      'Cluster T, JLT',                        'Dubai', 18, 'Kareem Nader',   '+971 52 456 7890')
-) AS v(code, name, address, city, total_floors, contact_person, contact_phone)
-WHERE NOT EXISTS (SELECT 1 FROM buildings);
-
--- 5b. Categories, if you have none at all
+-- 5a. Categories, if you have none at all
 INSERT INTO categories (name, code, description, icon)
 SELECT * FROM (VALUES
     ('HVAC',                  'HVAC',  'Heating, Ventilation & Air Conditioning',    'Wind'),
@@ -466,7 +477,7 @@ SELECT * FROM (VALUES
 ) AS v(name, code, description, icon)
 WHERE NOT EXISTS (SELECT 1 FROM categories);
 
--- 5c. Subcategories for each category that exists but has none
+-- 5b. Subcategories for each category that exists but has none
 INSERT INTO subcategories (category_id, name, code)
 SELECT c.id, v.name, v.code
 FROM categories c
@@ -486,38 +497,7 @@ JOIN (VALUES
 ) AS v(cat_code, name, code) ON v.cat_code = c.code
 WHERE NOT EXISTS (SELECT 1 FROM subcategories s WHERE s.category_id = c.id AND s.code = v.code);
 
--- 5d. Floors for each building that has none
-DO $$
-DECLARE b RECORD;
-BEGIN
-    FOR b IN SELECT id FROM buildings LOOP
-        IF NOT EXISTS (SELECT 1 FROM floors f WHERE f.building_id = b.id) THEN
-            INSERT INTO floors (building_id, floor_number, name) VALUES
-                (b.id, -1, 'Basement 1'),
-                (b.id,  0, 'Ground Floor'),
-                (b.id,  1, 'Level 1'),
-                (b.id,  2, 'Level 2'),
-                (b.id,  3, 'Level 3');
-        END IF;
-    END LOOP;
-END $$;
-
--- 5e. Two locations per floor that has none
-DO $$
-DECLARE f RECORD;
-BEGIN
-    FOR f IN SELECT id, floor_number, name FROM floors LOOP
-        IF NOT EXISTS (SELECT 1 FROM locations l WHERE l.floor_id = f.id) THEN
-            INSERT INTO locations (floor_id, code, name, zone) VALUES
-                (f.id, 'LOC-' || replace(f.floor_number::text, '-', 'B') || '-01',
-                 f.name || ' - Main Area',  'Central Core'),
-                (f.id, 'LOC-' || replace(f.floor_number::text, '-', 'B') || '-02',
-                 f.name || ' - Plant Room', 'Service Zone');
-        END IF;
-    END LOOP;
-END $$;
-
--- 5f. A default PPM checklist per category, so PPM plans can be created
+-- 5c. A default PPM checklist per category, so PPM plans can be created
 INSERT INTO ppm_checklists (title, category_id, description)
 SELECT c.name || ' - Standard Inspection', c.id, 'Default checklist created by 06_create_missing_tables.sql'
 FROM categories c
@@ -534,7 +514,9 @@ JOIN (VALUES
 ) AS v(ord, task, ftype) ON TRUE
 WHERE NOT EXISTS (SELECT 1 FROM ppm_checklist_items i WHERE i.checklist_id = k.id);
 
--- 5g. A small starter stock list, if you have no materials
+-- 5d. A starter stock list, if you have no materials.
+--     The Materials page is read-only, so anything you want listed there has to
+--     be inserted here or through the Supabase table editor.
 INSERT INTO materials (item_code, name, category, unit, quantity_in_stock, min_stock_level, unit_cost)
 SELECT * FROM (VALUES
     ('MAT-ELE-001', 'LED 18W Downlight',            'Electrical', 'pcs',    120, 20, 28.50),
@@ -550,7 +532,9 @@ DROP FUNCTION IF EXISTS _cafm_type(TEXT, TEXT);
 
 -- ==============================================================================
 -- VERIFY
---   "tables the app can reach" must now read 26.
+--   "tables the app can reach" must read 26 and "still missing" must read none.
+--   buildings / floors / locations / assets / work_orders reading 0 is correct:
+--   you create those in the app.
 -- ==============================================================================
 SELECT 'tables the app can reach' AS check_name,
        count(*)::text             AS value
