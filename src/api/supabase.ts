@@ -644,15 +644,25 @@ const safeSupabase = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> =>
 export const cafmDataService = {
   // Authentication & Users
   async getUsers(): Promise<UserProfile[]> {
-    const local = memoryUsers.length > 0 ? memoryUsers : SEED_USERS;
     if (isSupabaseConfigured()) {
-      supabase.from('profiles').select('*').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
+      try {
+        const timeoutPromise = new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 2000)
+        );
+        const { data, error } = await Promise.race([
+          supabase.from('profiles').select('*'),
+          timeoutPromise
+        ]);
+        if (!error && data && Array.isArray(data) && data.length > 0) {
           memoryUsers = data;
           saveStore('shever_users_registry', memoryUsers);
+          return data;
         }
-      }).catch(() => {});
+      } catch (e) {
+        console.warn('Supabase profiles fetch:', e);
+      }
     }
+    const local = memoryUsers.length > 0 ? memoryUsers : SEED_USERS;
     return local;
   },
 
@@ -1145,7 +1155,7 @@ export const cafmDataService = {
     }
     if (isSupabaseConfigured()) {
       try {
-        await supabase.from('profiles').update(userData).eq('id', id);
+        await supabase.from('profiles').update({ ...userData, updated_at: new Date().toISOString() }).eq('email', target.email);
       } catch (e) {
         console.warn('Supabase update user:', e);
       }
@@ -1170,7 +1180,7 @@ export const cafmDataService = {
     }
     if (isSupabaseConfigured()) {
       try {
-        await supabase.from('profiles').update({ password: newPassword }).eq('id', id);
+        await supabase.from('profiles').update({ password: newPassword, updated_at: new Date().toISOString() }).eq('email', target.email);
       } catch (e) {
         console.warn('Supabase change password error:', e);
       }
