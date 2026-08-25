@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "dev": "npm --prefix web-admin run dev",
-    "build": "npm --prefix web-admin run build",
-    "preview": "npm --prefix web-admin run preview"
+    "build": "npm run build --prefix web-admin 2>/dev/null || (tsc -b && vite build) || npm run build",
+    "dev": "npm run dev --prefix web-admin || vite",
+    "preview": "npm run preview --prefix web-admin || vite preview"
   }
 }
