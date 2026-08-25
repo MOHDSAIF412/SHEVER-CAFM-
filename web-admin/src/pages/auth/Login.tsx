@@ -22,8 +22,8 @@ export const Login: React.FC = () => {
   const { login } = useAuth();
   const { isDark, setTheme } = useTheme();
 
-  const [identifier, setIdentifier] = useState('admin@shever.com');
-  const [password, setPassword] = useState('Password123!');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);

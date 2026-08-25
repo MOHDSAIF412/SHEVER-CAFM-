@@ -555,9 +555,26 @@ const SEED_SETTINGS: SystemSettings = {
 };
 
 // ==============================================================================
-// IN-MEMORY STATE FOR DEV PREVIEW & OFFLINE RUNS
+// IN-MEMORY STATE FOR DEV PREVIEW & OFFLINE RUNS WITH LOCALSTORAGE PERSISTENCE
 // ==============================================================================
-let memoryUsers = [...SEED_USERS];
+const loadStoredUsers = (): UserProfile[] => {
+  try {
+    const saved = localStorage.getItem('shever_users_registry');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [...SEED_USERS];
+};
+
+const saveUsersToStorage = (users: UserProfile[]) => {
+  try {
+    localStorage.setItem('shever_users_registry', JSON.stringify(users));
+  } catch (e) {}
+};
+
+let memoryUsers = loadStoredUsers();
 let memoryBuildings = [...SEED_BUILDINGS];
 let memoryFloors = [...SEED_FLOORS];
 let memoryLocations = [...SEED_LOCATIONS];
@@ -611,6 +628,10 @@ const populateAsset = (ast: Asset): Asset => {
 export const cafmDataService = {
   // Authentication & Users
   async getUsers(): Promise<UserProfile[]> {
+    const stored = loadStoredUsers();
+    if (stored && stored.length > 0) {
+      memoryUsers = stored;
+    }
     if (isSupabaseConfigured()) {
       const { data } = await supabase.from('profiles').select('*');
       if (data && data.length > 0) return data;
@@ -989,6 +1010,7 @@ export const cafmDataService = {
       await supabase.from('profiles').insert(newUser);
     }
     memoryUsers.unshift(newUser);
+    saveUsersToStorage(memoryUsers);
     return newUser;
   },
 
@@ -999,6 +1021,7 @@ export const cafmDataService = {
     if (userData.password) {
       target.password = userData.password;
     }
+    saveUsersToStorage(memoryUsers);
     // Synchronize localStorage if current user
     const saved = localStorage.getItem('shever_auth_user');
     if (saved) {
@@ -1019,6 +1042,7 @@ export const cafmDataService = {
     const target = memoryUsers.find((u) => u.id === id);
     if (!target) throw new Error('User not found');
     target.password = newPassword;
+    saveUsersToStorage(memoryUsers);
     const saved = localStorage.getItem('shever_auth_user');
     if (saved) {
       try {
@@ -1036,6 +1060,7 @@ export const cafmDataService = {
 
   async deleteUser(id: string): Promise<boolean> {
     memoryUsers = memoryUsers.filter((u) => u.id !== id);
+    saveUsersToStorage(memoryUsers);
     if (isSupabaseConfigured()) {
       await supabase.from('profiles').delete().eq('id', id);
     }
