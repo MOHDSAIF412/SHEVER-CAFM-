@@ -1100,6 +1100,7 @@ export const cafmDataService = {
   async createUser(userData: Partial<UserProfile> & { password?: string }): Promise<UserProfile> {
     const seq = memoryUsers.length + 101;
     const newUser: UserProfile = {
+      id: userData.id || 'u0000000-0000-0000-0000-' + String(Date.now()).slice(-12),
       employee_id: userData.employee_id || `EMP-${seq}`,
       email: userData.email || `user${Date.now()}@shever.com`,
       password: userData.password || 'Password123!',
@@ -1110,11 +1111,16 @@ export const cafmDataService = {
       is_active: true,
       created_at: new Date().toISOString(),
     };
-    if (isSupabaseConfigured()) {
-      await supabase.from('profiles').insert(newUser);
-    }
     memoryUsers.unshift(newUser);
-    saveUsersToStorage(memoryUsers);
+    saveStore('shever_users_registry', memoryUsers);
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('profiles').upsert(newUser);
+      } catch (e) {
+        console.warn('Supabase insert user:', e);
+      }
+    }
     return newUser;
   },
 
@@ -1125,7 +1131,8 @@ export const cafmDataService = {
     if (userData.password) {
       target.password = userData.password;
     }
-    saveUsersToStorage(memoryUsers);
+    saveStore('shever_users_registry', memoryUsers);
+    
     // Synchronize localStorage if current user
     const saved = localStorage.getItem('shever_auth_user');
     if (saved) {
@@ -1137,7 +1144,11 @@ export const cafmDataService = {
       } catch (e) {}
     }
     if (isSupabaseConfigured()) {
-      await supabase.from('profiles').update(userData).eq('id', id);
+      try {
+        await supabase.from('profiles').update(userData).eq('id', id);
+      } catch (e) {
+        console.warn('Supabase update user:', e);
+      }
     }
     return target;
   },
@@ -1146,7 +1157,8 @@ export const cafmDataService = {
     const target = memoryUsers.find((u) => u.id === id);
     if (!target) throw new Error('User not found');
     target.password = newPassword;
-    saveUsersToStorage(memoryUsers);
+    saveStore('shever_users_registry', memoryUsers);
+    
     const saved = localStorage.getItem('shever_auth_user');
     if (saved) {
       try {
@@ -1157,16 +1169,22 @@ export const cafmDataService = {
       } catch (e) {}
     }
     if (isSupabaseConfigured()) {
-      await supabase.auth.admin?.updateUserById(id, { password: newPassword });
+      try {
+        await supabase.from('profiles').update({ password: newPassword }).eq('id', id);
+      } catch (e) {
+        console.warn('Supabase change password error:', e);
+      }
     }
     return true;
   },
 
   async deleteUser(id: string): Promise<boolean> {
     memoryUsers = memoryUsers.filter((u) => u.id !== id);
-    saveUsersToStorage(memoryUsers);
+    saveStore('shever_users_registry', memoryUsers);
     if (isSupabaseConfigured()) {
-      await supabase.from('profiles').delete().eq('id', id);
+      try {
+        await supabase.from('profiles').delete().eq('id', id);
+      } catch (e) {}
     }
     return true;
   },
