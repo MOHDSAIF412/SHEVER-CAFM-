@@ -3,8 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "npm run build --prefix web-admin 2>/dev/null || (tsc -b && vite build) || npm run build",
-    "dev": "npm run dev --prefix web-admin || vite",
-    "preview": "npm run preview --prefix web-admin || vite preview"
+    "build": "npm run build --prefix web-admin && cp -r web-admin/dist ./dist 2>/dev/null || xcopy /E /I /Y web-admin\\dist dist 2>nul || true",
+    "dev": "npm run dev --prefix web-admin",
+    "preview": "npm run preview --prefix web-admin"
   }
 }
