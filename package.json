@@ -6,7 +6,7 @@
     "web-admin"
   ],
   "scripts": {
-    "build": "npm run build --workspace=web-admin",
+    "build": "npm run build --workspace=web-admin && node -e \"const fs=require('fs'); fs.cpSync('web-admin/dist', 'dist', {recursive: true});\"",
     "dev": "npm run dev --workspace=web-admin"
   }
 }

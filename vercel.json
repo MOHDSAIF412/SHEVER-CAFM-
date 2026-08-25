@@ -1,6 +1,4 @@
 {
-  "buildCommand": "npm run build --workspace=web-admin",
-  "outputDirectory": "dist",
   "rewrites": [
     {
       "source": "/(.*)",
