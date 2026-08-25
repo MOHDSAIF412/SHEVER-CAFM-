@@ -49,6 +49,7 @@ export const UsersList: React.FC = () => {
   const [department, setDepartment] = useState('Facilities Operations');
   const [phone, setPhone] = useState('+971 50 ');
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
 
   const loadUsers = async () => {
     const data = await cafmDataService.getUsers();
@@ -63,6 +64,7 @@ export const UsersList: React.FC = () => {
   const handleCreateOrUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setFormError('');
     try {
       if (editingUser) {
         await cafmDataService.updateUser(editingUser.id, {
@@ -89,6 +91,10 @@ export const UsersList: React.FC = () => {
       setEditingUser(null);
       resetForm();
       await loadUsers();
+    } catch (err: any) {
+      // The save did not reach the database — say so instead of closing the
+      // dialog as if it had worked.
+      setFormError(err?.message || 'Could not save to the database.');
     } finally {
       setSubmitting(false);
     }
@@ -143,8 +149,12 @@ export const UsersList: React.FC = () => {
 
   const handleDeleteUser = async (id: string) => {
     if (confirm('Are you sure you want to delete this user?')) {
-      await cafmDataService.deleteUser(id);
-      await loadUsers();
+      try {
+        await cafmDataService.deleteUser(id);
+        await loadUsers();
+      } catch (err: any) {
+        alert(err?.message || 'Could not delete this user from the database.');
+      }
     }
   };
 
@@ -308,6 +318,11 @@ export const UsersList: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateOrUpdate} className="space-y-3.5 text-xs">
+              {formError && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-rose-700 dark:text-rose-400">
+                  {formError}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Full Name */}
                 <div>

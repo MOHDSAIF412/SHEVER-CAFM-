@@ -6,6 +6,7 @@ interface AuthContextType {
   user: UserProfile | null;
   role: UserRole | null;
   loading: boolean;
+  error: string | null;
   login: (identifier: string, password?: string) => Promise<boolean>;
   logout: () => void;
   setRole: (role: UserRole) => void;
@@ -27,19 +28,87 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Set loading to false; if user is null, app will properly require login
-    setLoading(false);
+    let cancelled = false;
+
+    // Re-read the signed-in user's profile from the cloud on start-up, so a
+    // role, name or deactivation changed on another device takes effect here.
+    const revalidate = async () => {
+      const cached = localStorage.getItem('shever_auth_user');
+      if (cached && isSupabaseConfigured()) {
+        try {
+          const parsed = JSON.parse(cached);
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', parsed.id)
+            .maybeSingle();
+
+          if (cancelled) return;
+          if (data && data.is_active === false) {
+            localStorage.removeItem('shever_auth_user');
+            setUser(null);
+          } else if (data) {
+            setUser(data as UserProfile);
+            localStorage.setItem('shever_auth_user', JSON.stringify(data));
+          }
+        } catch (e) {
+          // Offline: keep the cached session rather than locking the user out.
+        }
+      }
+      if (!cancelled) setLoading(false);
+    };
+
+    revalidate();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+  /**
+   * Credentials are verified by the database (app_login RPC), never in the
+   * browser. That is what makes a password change on one device take effect
+   * everywhere — and why a stale local copy can no longer let anyone in.
+   */
   const login = async (identifier: string, inputPassword?: string): Promise<boolean> => {
     setLoading(true);
+    setError(null);
     try {
-      const users = await cafmDataService.getUsers();
       const cleanId = identifier.trim().toLowerCase();
-      
-      // Match by Email OR by Employee ID (e.g. EMP-101)
+
+      if (isSupabaseConfigured()) {
+        const { data, error: rpcError } = await supabase.rpc('app_login', {
+          p_identifier: cleanId,
+          p_password: inputPassword || '',
+        });
+
+        if (rpcError) {
+          // A missing function means the database migration has not been run.
+          const missingFn =
+            rpcError.code === 'PGRST202' || /app_login/i.test(rpcError.message || '');
+          setError(
+            missingFn
+              ? 'The server is not set up yet. Run database/05_cloud_sync_fix.sql in the Supabase SQL Editor.'
+              : `Sign-in failed: ${rpcError.message}`
+          );
+          return false;
+        }
+
+        const profile = Array.isArray(data) ? data[0] : data;
+        if (!profile) {
+          setError('Incorrect username or password.');
+          return false;
+        }
+
+        setUser(profile as UserProfile);
+        localStorage.setItem('shever_auth_user', JSON.stringify(profile));
+        return true;
+      }
+
+      // No cloud connection configured: local-only sign-in for offline demos.
+      const users = await cafmDataService.getUsers();
       const matched = users.find(
         (u) =>
           u.email.toLowerCase() === cleanId ||
@@ -47,17 +116,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           u.id.toLowerCase() === cleanId
       );
 
-      if (matched) {
-        // If user has a password set and password was provided, verify it (or allow standard password)
-        if (inputPassword && matched.password && matched.password !== inputPassword && inputPassword !== 'Password123!') {
-          return false;
-        }
-
-        setUser(matched);
-        localStorage.setItem('shever_auth_user', JSON.stringify(matched));
-        return true;
+      if (!matched) {
+        setError('Incorrect username or password.');
+        return false;
       }
-      return false;
+      if (matched.password && inputPassword !== matched.password) {
+        setError('Incorrect username or password.');
+        return false;
+      }
+
+      setUser(matched);
+      localStorage.setItem('shever_auth_user', JSON.stringify(matched));
+      return true;
     } finally {
       setLoading(false);
     }
@@ -96,6 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         role,
         loading,
+        error,
         login,
         logout,
         setRole,
