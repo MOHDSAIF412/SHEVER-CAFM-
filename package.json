@@ -1,0 +1,10 @@
+{
+  "name": "shever-technical-cafm",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix web-admin run dev",
+    "build": "npm --prefix web-admin run build",
+    "preview": "npm --prefix web-admin run preview"
+  }
+}
