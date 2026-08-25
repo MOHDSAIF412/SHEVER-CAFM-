@@ -35,7 +35,7 @@ export const isSupabaseConfigured = () => {
 // ==============================================================================
 const SEED_USERS: UserProfile[] = [
   {
-    id: 'u0000000-0000-0000-0000-000000000001',
+    id: '90000000-0000-0000-0000-000000000001',
     email: 'admin@shever.com',
     full_name: 'Saif Al-Nuaimi (Admin)',
     phone: '+971 50 100 2000',
@@ -45,7 +45,7 @@ const SEED_USERS: UserProfile[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 'u0000000-0000-0000-0000-000000000002',
+    id: '90000000-0000-0000-0000-000000000002',
     email: 'manager@shever.com',
     full_name: 'David Reynolds (FM Manager)',
     phone: '+971 50 200 3000',
@@ -55,7 +55,7 @@ const SEED_USERS: UserProfile[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 'u0000000-0000-0000-0000-000000000003',
+    id: '90000000-0000-0000-0000-000000000003',
     email: 'supervisor@shever.com',
     full_name: 'Hamad Al-Maktoum (Supervisor)',
     phone: '+971 50 300 4000',
@@ -65,7 +65,7 @@ const SEED_USERS: UserProfile[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 'u0000000-0000-0000-0000-000000000004',
+    id: '90000000-0000-0000-0000-000000000004',
     email: 'technician@shever.com',
     full_name: 'Rashid Khan (HVAC Technician)',
     phone: '+971 50 400 5000',
@@ -75,7 +75,7 @@ const SEED_USERS: UserProfile[] = [
     created_at: new Date().toISOString(),
   },
   {
-    id: 'u0000000-0000-0000-0000-000000000005',
+    id: '90000000-0000-0000-0000-000000000005',
     email: 'tech.elec@shever.com',
     full_name: 'Vikram Sharma (Electrical Tech)',
     phone: '+971 50 500 6000',
@@ -354,8 +354,8 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: 'High',
     problem_description: 'Abnormal grinding noise coming from North Atrium AHU-001 fan section during peak load. Airflow is reduced.',
     status: 'In Progress',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
-    assigned_supervisor_id: 'u0000000-0000-0000-0000-000000000003',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
+    assigned_supervisor_id: '90000000-0000-0000-0000-000000000003',
     target_completion_at: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
     response_due_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
     resolution_due_at: new Date(Date.now() + 4 * 3600 * 1000).toISOString(),
@@ -378,7 +378,7 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: 'Medium',
     problem_description: '3 ceiling downlights flickering intermittently near the main VIP elevator lobby entrance.',
     status: 'New',
-    assigned_supervisor_id: 'u0000000-0000-0000-0000-000000000003',
+    assigned_supervisor_id: '90000000-0000-0000-0000-000000000003',
     target_completion_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
     response_due_at: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
     resolution_due_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
@@ -400,8 +400,8 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: 'Emergency',
     problem_description: 'High pressure alarm triggered on Potable Water Booster Pump line. Water leakage detected in Basement Pump Room.',
     status: 'Accepted',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
-    assigned_supervisor_id: 'u0000000-0000-0000-0000-000000000003',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
+    assigned_supervisor_id: '90000000-0000-0000-0000-000000000003',
     target_completion_at: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
     response_due_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     resolution_due_at: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
@@ -422,8 +422,8 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: 'Low',
     problem_description: 'Door closer on Executive Boardroom door is slamming shut loudly.',
     status: 'Pending Approval',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
-    assigned_supervisor_id: 'u0000000-0000-0000-0000-000000000003',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
+    assigned_supervisor_id: '90000000-0000-0000-0000-000000000003',
     work_performed: 'Adjusted hydraulic latch speed valves and lubricated hinge bearings.',
     root_cause: 'Valve calibration loosened due to high usage.',
     action_taken: 'Re-calibrated arm tension and tested 10 cycle swings smoothly.',
@@ -446,8 +446,8 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: 'High',
     problem_description: 'Server room temperature exceeded 25°C warning limit. AC cooling output insufficient.',
     status: 'Closed',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
-    assigned_supervisor_id: 'u0000000-0000-0000-0000-000000000003',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
+    assigned_supervisor_id: '90000000-0000-0000-0000-000000000003',
     work_performed: 'Cleaned clogged evaporator filters and reset high-pressure safety switch.',
     action_taken: 'Airflow restored, server room stabilized at 20°C.',
     target_completion_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
@@ -474,7 +474,7 @@ const SEED_PPM_PLANS: PPMPlan[] = [
     frequency: 'Monthly',
     start_date: '2026-01-01',
     next_due_date: new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString().split('T')[0],
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
     is_active: true,
     created_at: '2026-01-01T00:00:00Z',
   },
@@ -490,7 +490,7 @@ const SEED_PPM_PLANS: PPMPlan[] = [
     frequency: 'Quarterly',
     start_date: '2026-01-01',
     next_due_date: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().split('T')[0],
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000005',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000005',
     is_active: true,
     created_at: '2026-01-01T00:00:00Z',
   }
@@ -503,7 +503,7 @@ const SEED_PPM_SCHEDULES: PPMSchedule[] = [
     ppm_plan_id: '30000000-0000-0000-0000-000000000001',
     due_date: new Date(Date.now() + 5 * 24 * 3600 * 1000).toISOString().split('T')[0],
     status: 'Scheduled',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
     is_overdue: false,
     created_at: '2026-01-01T00:00:00Z',
   },
@@ -513,7 +513,7 @@ const SEED_PPM_SCHEDULES: PPMSchedule[] = [
     ppm_plan_id: '30000000-0000-0000-0000-000000000002',
     due_date: new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString().split('T')[0],
     status: 'Scheduled',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000005',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000005',
     is_overdue: false,
     created_at: '2026-01-01T00:00:00Z',
   },
@@ -523,7 +523,7 @@ const SEED_PPM_SCHEDULES: PPMSchedule[] = [
     ppm_plan_id: '30000000-0000-0000-0000-000000000001',
     due_date: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString().split('T')[0],
     status: 'Overdue',
-    assigned_technician_id: 'u0000000-0000-0000-0000-000000000004',
+    assigned_technician_id: '90000000-0000-0000-0000-000000000004',
     is_overdue: true,
     created_at: '2026-01-01T00:00:00Z',
   }
@@ -557,6 +557,21 @@ const SEED_SETTINGS: SystemSettings = {
 // ==============================================================================
 // IN-MEMORY STATE FOR DEV PREVIEW & OFFLINE RUNS WITH INSTANT LOCALSTORAGE CACHE
 // ==============================================================================
+/**
+ * Devices that ran the pre-fix build hold local records that were never
+ * persisted to the cloud — some with ids Postgres cannot accept. Bump this to
+ * clear those caches once so every device reloads the real data from Supabase.
+ */
+const CACHE_VERSION = '2';
+try {
+  if (localStorage.getItem('shever_cache_version') !== CACHE_VERSION) {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('shever_') && k !== 'shever_auth_user')
+      .forEach((k) => localStorage.removeItem(k));
+    localStorage.setItem('shever_cache_version', CACHE_VERSION);
+  }
+} catch (e) {}
+
 const loadStore = <T>(key: string, seed: T): T => {
   try {
     const saved = localStorage.getItem(key);
@@ -587,9 +602,9 @@ let memoryPPMPlans = loadStore('shever_ppm_plans', [...SEED_PPM_PLANS]);
 let memoryPPMSchedules = loadStore('shever_ppm_schedules', [...SEED_PPM_SCHEDULES]);
 let memoryMaterials = loadStore('shever_materials', [...SEED_MATERIALS]);
 let memorySettings = loadStore('shever_settings', { ...SEED_SETTINGS });
-let memoryAuditLogs = loadStore('shever_audit_logs', [
+let memoryAuditLogs = loadStore<AuditLog[]>('shever_audit_logs', [
   {
-    id: 'l0000000-0000-0000-0000-000000000001',
+    id: '80000000-0000-0000-0000-000000000001',
     user_email: 'admin@shever.com',
     action: 'SYSTEM_INITIALIZED',
     module: 'CORE',
@@ -623,18 +638,126 @@ const populateAsset = (ast: Asset): Asset => {
   };
 };
 
-// Safe Supabase execution with timeout & fallback guarantee
-const safeSupabase = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
-  if (!isSupabaseConfigured()) return fallback;
+// ==============================================================================
+// CLOUD PERSISTENCE LAYER
+//
+// Every write goes to Supabase FIRST and is awaited. If the database rejects it
+// the error is thrown, so the UI reports a real failure instead of showing a
+// success toast over a change that only ever existed in this browser.
+// ==============================================================================
+
+/** Real UUIDs — Postgres rejects ids like 'ast-1724...' with error 22P02. */
+export const newId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+};
+
+/** Live cloud state, surfaced in the UI so a sync failure is never silent. */
+export const cloudSync = {
+  online: false,
+  lastError: null as string | null,
+  lastSyncedAt: null as string | null,
+  listeners: new Set<() => void>(),
+  subscribe(fn: () => void) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  },
+  set(online: boolean, error: string | null) {
+    this.online = online;
+    this.lastError = error;
+    if (online) this.lastSyncedAt = new Date().toISOString();
+    this.listeners.forEach((fn) => fn());
+  },
+};
+
+/**
+ * Fields the app keeps for its own rendering that are NOT database columns.
+ * Sending them makes PostgREST reject the whole statement (PGRST204), which is
+ * why joined objects previously had to be stripped before every write.
+ */
+const NON_COLUMN_FIELDS = [
+  'building', 'floor', 'location', 'asset', 'category', 'subcategory',
+  'assigned_technician', 'assigned_supervisor', 'plan', 'checklist',
+  'photos', 'comments', 'materials', 'status_history', 'password',
+];
+
+const toRow = <T extends Record<string, any>>(obj: T): Record<string, any> => {
+  const row: Record<string, any> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (NON_COLUMN_FIELDS.includes(k)) continue;
+    if (v === undefined) continue;
+    row[k] = v;
+  }
+  return row;
+};
+
+const describe = (err: any): string => {
+  if (!err) return 'Unknown database error';
+  if (err.message && err.hint) return `${err.message} (${err.hint})`;
+  return err.message || err.details || String(err);
+};
+
+/**
+ * Awaited write. Throws on rejection so callers cannot report false success.
+ * `label` names the operation in the error the user sees.
+ */
+const cloudWrite = async <T>(
+  label: string,
+  run: () => PromiseLike<{ data: T; error: any }>
+): Promise<T | null> => {
+  if (!isSupabaseConfigured()) {
+    cloudSync.set(false, 'Supabase is not configured — changes stay on this device only.');
+    return null;
+  }
+  const { data, error } = await run();
+  if (error) {
+    const msg = `${label} failed: ${describe(error)}`;
+    cloudSync.set(false, msg);
+    console.error('[cloud]', msg, error);
+    throw new Error(msg);
+  }
+  cloudSync.set(true, null);
+  return data;
+};
+
+/**
+ * Awaited read. Returns cloud rows when reachable, otherwise the local cache.
+ * Reads are cloud-first so a second browser or phone sees the same data.
+ */
+const cloudRead = async <T>(
+  table: string,
+  build: (q: any) => any,
+  cacheKey: string
+): Promise<T[] | null> => {
+  if (!isSupabaseConfigured()) return null;
   try {
-    const timeoutPromise = new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('Supabase query timeout')), 1500)
+    const query = build(supabase.from(table).select('*'));
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timed out after 8s')), 8000)
     );
-    const result = await Promise.race([fn(), timeoutPromise]);
-    return result !== undefined && result !== null ? result : fallback;
-  } catch (err) {
-    console.warn('Supabase query fallback applied:', err);
-    return fallback;
+    const { data, error } = (await Promise.race([query, timeout])) as any;
+    if (error) {
+      cloudSync.set(false, `Loading ${table} failed: ${describe(error)}`);
+      console.error('[cloud] read', table, error);
+      return null;
+    }
+    cloudSync.set(true, null);
+    if (Array.isArray(data)) {
+      // An empty table is a valid answer — cache it rather than falling back
+      // to seed data, otherwise deletions never propagate between devices.
+      saveStore(cacheKey, data);
+      return data as T[];
+    }
+    return null;
+  } catch (e: any) {
+    cloudSync.set(false, `Loading ${table} failed: ${describe(e)}`);
+    console.error('[cloud] read', table, e);
+    return null;
   }
 };
 
@@ -644,26 +767,16 @@ const safeSupabase = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> =>
 export const cafmDataService = {
   // Authentication & Users
   async getUsers(): Promise<UserProfile[]> {
-    if (isSupabaseConfigured()) {
-      try {
-        const timeoutPromise = new Promise<any>((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), 2000)
-        );
-        const { data, error } = await Promise.race([
-          supabase.from('profiles').select('*'),
-          timeoutPromise
-        ]);
-        if (!error && data && Array.isArray(data) && data.length > 0) {
-          memoryUsers = data;
-          saveStore('shever_users_registry', memoryUsers);
-          return data;
-        }
-      } catch (e) {
-        console.warn('Supabase profiles fetch:', e);
-      }
+    const cloud = await cloudRead<UserProfile>(
+      'profiles',
+      (q) => q.order('created_at', { ascending: false }),
+      'shever_users_registry'
+    );
+    if (cloud) {
+      memoryUsers = cloud;
+      return cloud;
     }
-    const local = memoryUsers.length > 0 ? memoryUsers : SEED_USERS;
-    return local;
+    return memoryUsers.length > 0 ? memoryUsers : SEED_USERS;
   },
 
   async getTechnicians(): Promise<UserProfile[]> {
@@ -711,15 +824,13 @@ export const cafmDataService = {
 
   // Work Orders CRUD & Actions
   async getWorkOrders(): Promise<WorkOrder[]> {
-    const local = memoryWorkOrders.length > 0 ? memoryWorkOrders : SEED_WORK_ORDERS;
-    if (isSupabaseConfigured()) {
-      supabase.from('work_orders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryWorkOrders = data;
-          saveStore('shever_work_orders', memoryWorkOrders);
-        }
-      }).catch(() => {});
-    }
+    const cloud = await cloudRead<WorkOrder>(
+      'work_orders',
+      (q) => q.order('created_at', { ascending: false }),
+      'shever_work_orders'
+    );
+    if (cloud) memoryWorkOrders = cloud;
+    const local = cloud || (memoryWorkOrders.length > 0 ? memoryWorkOrders : SEED_WORK_ORDERS);
     return local.map(populateWorkOrder);
   },
 
@@ -732,7 +843,7 @@ export const cafmDataService = {
     const seq = memoryWorkOrders.length + 100001;
     const currYear = new Date().getFullYear();
     const newWo: WorkOrder = {
-      id: 'wo-' + Date.now(),
+      id: newId(),
       wo_number: `WO-${currYear}-${String(seq).padStart(6, '0')}`,
       building_id: woData.building_id || memoryBuildings[0].id,
       floor_id: woData.floor_id || memoryFloors[0].id,
@@ -752,11 +863,9 @@ export const cafmDataService = {
       updated_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('work_orders').insert(newWo);
-      } catch (e) {}
-    }
+    await cloudWrite('Creating work order', () =>
+      supabase.from('work_orders').insert(toRow(newWo))
+    );
     memoryWorkOrders.unshift(newWo);
     saveStore('shever_work_orders', memoryWorkOrders);
     return populateWorkOrder(newWo);
@@ -794,11 +903,11 @@ export const cafmDataService = {
 
     saveStore('shever_work_orders', memoryWorkOrders);
 
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('work_orders').update(target).eq('id', id);
-      } catch (e) {}
-    }
+    // toRow() drops the joined building/floor/asset objects — sending those
+    // made PostgREST reject the whole UPDATE as unknown columns.
+    await cloudWrite('Updating work order status', () =>
+      supabase.from('work_orders').update(toRow(target)).eq('id', id)
+    );
     return populateWorkOrder(target);
   },
 
@@ -815,63 +924,50 @@ export const cafmDataService = {
 
     saveStore('shever_work_orders', memoryWorkOrders);
 
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('work_orders').update({ status: 'Closed', closed_at: now, updated_at: now }).in('id', ids);
-      } catch (e) {}
-    }
+    await cloudWrite('Closing work orders', () =>
+      supabase.from('work_orders').update({ status: 'Closed', closed_at: now, updated_at: now }).in('id', ids)
+    );
     return true;
   },
 
   async updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined> {
     const target = memoryWorkOrders.find((w) => w.id === id);
     if (!target) return undefined;
+    await cloudWrite('Updating work order', () =>
+      supabase
+        .from('work_orders')
+        .update(toRow({ ...updates, updated_at: new Date().toISOString() }))
+        .eq('id', id)
+    );
     Object.assign(target, updates);
     saveStore('shever_work_orders', memoryWorkOrders);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('work_orders').update(updates).eq('id', id);
-      } catch (e) {}
-    }
     return populateWorkOrder(target);
   },
 
   async deleteWorkOrder(id: string): Promise<boolean> {
+    await cloudWrite('Deleting work order', () =>
+      supabase.from('work_orders').delete().eq('id', id)
+    );
     const index = memoryWorkOrders.findIndex((w) => w.id === id);
-    if (index !== -1) {
-      memoryWorkOrders.splice(index, 1);
-    }
+    if (index !== -1) memoryWorkOrders.splice(index, 1);
     saveStore('shever_work_orders', memoryWorkOrders);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('work_orders').delete().eq('id', id);
-      } catch (e) {}
-    }
     return true;
   },
 
   async bulkDeleteWorkOrders(ids: string[]): Promise<boolean> {
+    await cloudWrite('Deleting work orders', () =>
+      supabase.from('work_orders').delete().in('id', ids)
+    );
     memoryWorkOrders = memoryWorkOrders.filter((w) => !ids.includes(w.id));
     saveStore('shever_work_orders', memoryWorkOrders);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('work_orders').delete().in('id', ids);
-      } catch (e) {}
-    }
     return true;
   },
 
   // Assets
   async getAssets(): Promise<Asset[]> {
-    const local = memoryAssets.length > 0 ? memoryAssets : SEED_ASSETS;
-    if (isSupabaseConfigured()) {
-      supabase.from('assets').select('*').order('asset_number').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryAssets = data;
-          saveStore('shever_assets', memoryAssets);
-        }
-      }).catch(() => {});
-    }
+    const cloud = await cloudRead<Asset>('assets', (q) => q.order('asset_number'), 'shever_assets');
+    if (cloud) memoryAssets = cloud;
+    const local = cloud || (memoryAssets.length > 0 ? memoryAssets : SEED_ASSETS);
     return local.map(populateAsset);
   },
 
@@ -884,7 +980,7 @@ export const cafmDataService = {
     const seq = memoryAssets.length + 1;
     const catCode = memoryCategories.find((c) => c.id === assetData.category_id)?.code || 'GEN';
     const newAsset: Asset = {
-      id: 'ast-' + Date.now(),
+      id: newId(),
       asset_number: `AST-${catCode}-${String(seq).padStart(3, '0')}`,
       name: assetData.name || 'New Equipment Asset',
       type: assetData.type || 'Standard Equipment',
@@ -902,11 +998,7 @@ export const cafmDataService = {
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('assets').insert(newAsset);
-      } catch (e) {}
-    }
+    await cloudWrite('Creating asset', () => supabase.from('assets').insert(toRow(newAsset)));
     memoryAssets.unshift(newAsset);
     saveStore('shever_assets', memoryAssets);
     return populateAsset(newAsset);
@@ -915,41 +1007,30 @@ export const cafmDataService = {
   async updateAsset(id: string, assetData: Partial<Asset>): Promise<Asset> {
     const target = memoryAssets.find((a) => a.id === id);
     if (!target) throw new Error('Asset not found');
+    await cloudWrite('Updating asset', () =>
+      supabase
+        .from('assets')
+        .update(toRow({ ...assetData, updated_at: new Date().toISOString() }))
+        .eq('id', id)
+    );
     Object.assign(target, assetData);
     saveStore('shever_assets', memoryAssets);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('assets').update(assetData).eq('id', id);
-      } catch (e) {}
-    }
     return populateAsset(target);
   },
 
   async deleteAsset(id: string): Promise<boolean> {
+    await cloudWrite('Deleting asset', () => supabase.from('assets').delete().eq('id', id));
     const index = memoryAssets.findIndex((a) => a.id === id);
-    if (index !== -1) {
-      memoryAssets.splice(index, 1);
-    }
+    if (index !== -1) memoryAssets.splice(index, 1);
     saveStore('shever_assets', memoryAssets);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('assets').delete().eq('id', id);
-      } catch (e) {}
-    }
     return true;
   },
 
   // PPM
   async getPPMPlans(): Promise<PPMPlan[]> {
-    const local = memoryPPMPlans.length > 0 ? memoryPPMPlans : SEED_PPM_PLANS;
-    if (isSupabaseConfigured()) {
-      supabase.from('ppm_plans').select('*').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryPPMPlans = data;
-          saveStore('shever_ppm_plans', memoryPPMPlans);
-        }
-      }).catch(() => {});
-    }
+    const cloud = await cloudRead<PPMPlan>('ppm_plans', (q) => q, 'shever_ppm_plans');
+    if (cloud) memoryPPMPlans = cloud;
+    const local = cloud || (memoryPPMPlans.length > 0 ? memoryPPMPlans : SEED_PPM_PLANS);
     return local.map((p) => ({
       ...p,
       asset: memoryAssets.find((a) => a.id === p.asset_id),
@@ -960,15 +1041,9 @@ export const cafmDataService = {
   },
 
   async getPPMSchedules(): Promise<PPMSchedule[]> {
-    const local = memoryPPMSchedules.length > 0 ? memoryPPMSchedules : SEED_PPM_SCHEDULES;
-    if (isSupabaseConfigured()) {
-      supabase.from('ppm_schedules').select('*').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryPPMSchedules = data;
-          saveStore('shever_ppm_schedules', memoryPPMSchedules);
-        }
-      }).catch(() => {});
-    }
+    const cloud = await cloudRead<PPMSchedule>('ppm_schedules', (q) => q, 'shever_ppm_schedules');
+    if (cloud) memoryPPMSchedules = cloud;
+    const local = cloud || (memoryPPMSchedules.length > 0 ? memoryPPMSchedules : SEED_PPM_SCHEDULES);
     return local.map((s) => ({
       ...s,
       plan: memoryPPMPlans.find((p) => p.id === s.ppm_plan_id),
@@ -977,20 +1052,22 @@ export const cafmDataService = {
   },
 
   async deletePPMSchedule(id: string): Promise<boolean> {
+    await cloudWrite('Deleting PPM schedule', () =>
+      supabase.from('ppm_schedules').delete().eq('id', id)
+    );
     const index = memoryPPMSchedules.findIndex((s) => s.id === id);
-    if (index !== -1) {
-      memoryPPMSchedules.splice(index, 1);
-    }
+    if (index !== -1) memoryPPMSchedules.splice(index, 1);
     saveStore('shever_ppm_schedules', memoryPPMSchedules);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('ppm_schedules').delete().eq('id', id);
-      } catch (e) {}
-    }
     return true;
   },
 
   async deletePPMPlan(id: string): Promise<boolean> {
+    await cloudWrite('Deleting PPM plan', async () => {
+      const child = await supabase.from('ppm_schedules').delete().eq('ppm_plan_id', id);
+      if (child.error) return child;
+      return supabase.from('ppm_plans').delete().eq('id', id);
+    });
+
     const index = memoryPPMPlans.findIndex((p) => p.id === id);
     if (index !== -1) {
       memoryPPMPlans.splice(index, 1);
@@ -1001,119 +1078,81 @@ export const cafmDataService = {
     }
     saveStore('shever_ppm_plans', memoryPPMPlans);
     saveStore('shever_ppm_schedules', memoryPPMSchedules);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('ppm_schedules').delete().eq('ppm_plan_id', id);
-        await supabase.from('ppm_plans').delete().eq('id', id);
-      } catch (e) {}
-    }
     return true;
   },
 
   // Master Data
   async getBuildings(): Promise<Building[]> {
-    const local = memoryBuildings.length > 0 ? memoryBuildings : SEED_BUILDINGS;
-    if (isSupabaseConfigured()) {
-      supabase.from('buildings').select('*').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryBuildings = data;
-          saveStore('shever_buildings', memoryBuildings);
-        }
-      }).catch(() => {});
-    }
-    return local;
+    const cloud = await cloudRead<Building>('buildings', (q) => q.order('code'), 'shever_buildings');
+    if (cloud) memoryBuildings = cloud;
+    return cloud || (memoryBuildings.length > 0 ? memoryBuildings : SEED_BUILDINGS);
   },
 
   async getFloors(buildingId?: string): Promise<Floor[]> {
-    const fallback = buildingId ? memoryFloors.filter((f) => f.building_id === buildingId) : memoryFloors;
-    if (isSupabaseConfigured()) {
-      let query = supabase.from('floors').select('*');
-      if (buildingId) query = query.eq('building_id', buildingId);
-      query.then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryFloors = data;
-          saveStore('shever_floors', memoryFloors);
-        }
-      }).catch(() => {});
-    }
-    return fallback;
+    const cloud = await cloudRead<Floor>('floors', (q) => q, 'shever_floors');
+    if (cloud) memoryFloors = cloud;
+    const all = cloud || memoryFloors;
+    return buildingId ? all.filter((f) => f.building_id === buildingId) : all;
   },
 
   async getLocations(floorId?: string): Promise<Location[]> {
-    const fallback = floorId ? memoryLocations.filter((l) => l.floor_id === floorId) : memoryLocations;
-    if (isSupabaseConfigured()) {
-      let query = supabase.from('locations').select('*');
-      if (floorId) query = query.eq('floor_id', floorId);
-      query.then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryLocations = data;
-          saveStore('shever_locations', memoryLocations);
-        }
-      }).catch(() => {});
-    }
-    return fallback;
+    const cloud = await cloudRead<Location>('locations', (q) => q, 'shever_locations');
+    if (cloud) memoryLocations = cloud;
+    const all = cloud || memoryLocations;
+    return floorId ? all.filter((l) => l.floor_id === floorId) : all;
   },
 
   async getCategories(): Promise<Category[]> {
-    const local = memoryCategories.length > 0 ? memoryCategories : SEED_CATEGORIES;
-    if (isSupabaseConfigured()) {
-      supabase.from('categories').select('*').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryCategories = data;
-          saveStore('shever_categories', memoryCategories);
-        }
-      }).catch(() => {});
-    }
-    return local;
+    const cloud = await cloudRead<Category>('categories', (q) => q, 'shever_categories');
+    if (cloud) memoryCategories = cloud;
+    return cloud || (memoryCategories.length > 0 ? memoryCategories : SEED_CATEGORIES);
   },
 
   async getSubcategories(categoryId?: string): Promise<Subcategory[]> {
-    const fallback = categoryId ? memorySubcategories.filter((s) => s.category_id === categoryId) : memorySubcategories;
-    if (isSupabaseConfigured()) {
-      let query = supabase.from('subcategories').select('*');
-      if (categoryId) query = query.eq('category_id', categoryId);
-      query.then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memorySubcategories = data;
-          saveStore('shever_subcategories', memorySubcategories);
-        }
-      }).catch(() => {});
-    }
-    return fallback;
+    const cloud = await cloudRead<Subcategory>('subcategories', (q) => q, 'shever_subcategories');
+    if (cloud) memorySubcategories = cloud;
+    const all = cloud || memorySubcategories;
+    return categoryId ? all.filter((s) => s.category_id === categoryId) : all;
   },
 
   async getMaterials(): Promise<Material[]> {
-    const local = memoryMaterials.length > 0 ? memoryMaterials : SEED_MATERIALS;
-    if (isSupabaseConfigured()) {
-      supabase.from('materials').select('*').then(({ data, error }) => {
-        if (!error && data && data.length > 0) {
-          memoryMaterials = data;
-          saveStore('shever_materials', memoryMaterials);
-        }
-      }).catch(() => {});
-    }
-    return local;
+    const cloud = await cloudRead<Material>('materials', (q) => q, 'shever_materials');
+    if (cloud) memoryMaterials = cloud;
+    return cloud || (memoryMaterials.length > 0 ? memoryMaterials : SEED_MATERIALS);
   },
 
   async getSystemSettings(): Promise<SystemSettings> {
     if (isSupabaseConfigured()) {
-      supabase.from('system_settings').select('*').single().then(({ data, error }) => {
+      try {
+        const { data, error } = await supabase.from('system_settings').select('*').limit(1).maybeSingle();
         if (!error && data) {
           memorySettings = data;
           saveStore('shever_settings', memorySettings);
+          cloudSync.set(true, null);
         }
-      }).catch(() => {});
+      } catch (e) {
+        console.error('[cloud] read system_settings', e);
+      }
     }
+    return memorySettings;
+  },
+
+  async updateSystemSettings(updates: Partial<SystemSettings>): Promise<SystemSettings> {
+    const merged = { ...memorySettings, ...updates, updated_at: new Date().toISOString() };
+    await cloudWrite('Saving system settings', () =>
+      supabase.from('system_settings').update(toRow(updates)).eq('id', merged.id)
+    );
+    memorySettings = merged;
+    saveStore('shever_settings', memorySettings);
     return memorySettings;
   },
 
   async createUser(userData: Partial<UserProfile> & { password?: string }): Promise<UserProfile> {
     const seq = memoryUsers.length + 101;
     const newUser: UserProfile = {
-      id: userData.id || 'u0000000-0000-0000-0000-' + String(Date.now()).slice(-12),
+      id: userData.id || newId(),
       employee_id: userData.employee_id || `EMP-${seq}`,
-      email: userData.email || `user${Date.now()}@shever.com`,
-      password: userData.password || 'Password123!',
+      email: (userData.email || `user${Date.now()}@shever.com`).trim().toLowerCase(),
       full_name: userData.full_name || 'New Staff User',
       phone: userData.phone || '+971 50 000 0000',
       role_id: userData.role_id || 'technician',
@@ -1121,81 +1160,99 @@ export const cafmDataService = {
       is_active: true,
       created_at: new Date().toISOString(),
     };
-    memoryUsers.unshift(newUser);
-    saveStore('shever_users_registry', memoryUsers);
+
+    // Cloud first: if the profile cannot be saved, the account must not appear
+    // to exist locally either.
+    const saved = await cloudWrite('Creating user', () =>
+      supabase.from('profiles').insert(toRow(newUser)).select().single()
+    );
+    const stored: UserProfile = (saved as UserProfile) || newUser;
 
     if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('profiles').upsert(newUser);
-      } catch (e) {
-        console.warn('Supabase insert user:', e);
-      }
+      await cloudWrite('Setting the password', () =>
+        supabase.rpc('app_set_password', {
+          p_user_id: stored.id,
+          p_password: userData.password || 'Password123!',
+        })
+      );
+    } else {
+      // Offline demo mode: the device is the only place the password can live.
+      stored.password = userData.password || 'Password123!';
     }
-    return newUser;
+
+    memoryUsers.unshift(stored);
+    saveStore('shever_users_registry', memoryUsers);
+    return stored;
   },
 
   async updateUser(id: string, userData: Partial<UserProfile> & { password?: string }): Promise<UserProfile> {
-    const target = memoryUsers.find((u) => u.id === id);
-    if (!target) throw new Error('User not found');
-    Object.assign(target, userData);
-    if (userData.password) {
-      target.password = userData.password;
+    const { password, ...profileFields } = userData;
+
+    const updated = await cloudWrite('Saving user details', () =>
+      supabase
+        .from('profiles')
+        .update(toRow({ ...profileFields, updated_at: new Date().toISOString() }))
+        .eq('id', id)
+        .select()
+        .single()
+    );
+
+    if (password) {
+      await this.changeUserPassword(id, password);
     }
+
+    const target = memoryUsers.find((u) => u.id === id);
+    const merged: UserProfile =
+      (updated as UserProfile) ||
+      (target ? Object.assign(target, profileFields) : ({ id, ...profileFields } as UserProfile));
+
+    if (target) Object.assign(target, merged);
+    else memoryUsers.unshift(merged);
     saveStore('shever_users_registry', memoryUsers);
-    
-    // Synchronize localStorage if current user
-    const saved = localStorage.getItem('shever_auth_user');
-    if (saved) {
+
+    // Keep the signed-in user's own cached profile in step
+    const session = localStorage.getItem('shever_auth_user');
+    if (session) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.id === id || parsed.email === target.email) {
-          localStorage.setItem('shever_auth_user', JSON.stringify({ ...parsed, ...target }));
+        const parsed = JSON.parse(session);
+        if (parsed.id === id) {
+          localStorage.setItem('shever_auth_user', JSON.stringify({ ...parsed, ...merged }));
         }
       } catch (e) {}
     }
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('profiles').update({ ...userData, updated_at: new Date().toISOString() }).eq('email', target.email);
-      } catch (e) {
-        console.warn('Supabase update user:', e);
-      }
-    }
-    return target;
+    return merged;
   },
 
   async changeUserPassword(id: string, newPassword: string): Promise<boolean> {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Password must be at least 6 characters long.');
+    }
+
+    if (!isSupabaseConfigured()) {
+      throw new Error(
+        'Cannot change the password: this build has no Supabase connection, so the ' +
+          'new password would only work in this browser. Set VITE_SUPABASE_URL and ' +
+          'VITE_SUPABASE_ANON_KEY, then redeploy.'
+      );
+    }
+
+    // Hashed and stored server-side by app_set_password. Throws if it fails,
+    // so the Users screen can never show "password changed" over a no-op.
+    await cloudWrite('Changing the password', () =>
+      supabase.rpc('app_set_password', { p_user_id: id, p_password: newPassword })
+    );
+
+    // The plaintext password is never kept on the device any more.
     const target = memoryUsers.find((u) => u.id === id);
-    if (!target) throw new Error('User not found');
-    target.password = newPassword;
+    if (target) delete target.password;
     saveStore('shever_users_registry', memoryUsers);
-    
-    const saved = localStorage.getItem('shever_auth_user');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.id === id || parsed.email === target.email) {
-          localStorage.setItem('shever_auth_user', JSON.stringify({ ...parsed, password: newPassword }));
-        }
-      } catch (e) {}
-    }
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('profiles').update({ password: newPassword, updated_at: new Date().toISOString() }).eq('email', target.email);
-      } catch (e) {
-        console.warn('Supabase change password error:', e);
-      }
-    }
     return true;
   },
 
   async deleteUser(id: string): Promise<boolean> {
+    await cloudWrite('Deleting user', () => supabase.from('profiles').delete().eq('id', id));
     memoryUsers = memoryUsers.filter((u) => u.id !== id);
     saveStore('shever_users_registry', memoryUsers);
-    if (isSupabaseConfigured()) {
-      try {
-        await supabase.from('profiles').delete().eq('id', id);
-      } catch (e) {}
-    }
     return true;
   },
 
@@ -1210,7 +1267,7 @@ export const cafmDataService = {
 
     if (!target.photos) target.photos = [];
     const newPhoto = {
-      id: 'photo-' + Date.now(),
+      id: newId(),
       work_order_id: workOrderId,
       photo_type: photoType,
       photo_url: photoUrl,
@@ -1222,16 +1279,28 @@ export const cafmDataService = {
     if (photoType === 'before') target.before_photo_url = photoUrl;
     if (photoType === 'after') target.after_photo_url = photoUrl;
 
-    if (isSupabaseConfigured()) {
-      await supabase.from('work_order_photos').insert(newPhoto);
+    await cloudWrite('Saving photo', () =>
+      supabase.from('work_order_photos').insert(toRow(newPhoto))
+    );
+    if (photoType === 'before' || photoType === 'after') {
+      await cloudWrite('Updating work order photo', () =>
+        supabase
+          .from('work_orders')
+          .update({
+            [`${photoType}_photo_url`]: photoUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', workOrderId)
+      );
     }
+    saveStore('shever_work_orders', memoryWorkOrders);
     return populateWorkOrder(target);
   },
 
   async createPPMPlan(planData: Partial<PPMPlan>): Promise<PPMPlan> {
     const seq = memoryPPMPlans.length + 101;
     const newPlan: PPMPlan = {
-      id: 'ppm-plan-' + Date.now(),
+      id: newId(),
       ppm_code: `PPM-PLN-${String(seq).padStart(3, '0')}`,
       title: planData.title || 'New Preventive Maintenance Plan',
       asset_id: planData.asset_id || memoryAssets[0].id,
@@ -1248,14 +1317,13 @@ export const cafmDataService = {
       created_at: new Date().toISOString(),
     };
 
-    if (isSupabaseConfigured()) {
-      await supabase.from('ppm_plans').insert(newPlan);
-    }
+    await cloudWrite('Creating PPM plan', () => supabase.from('ppm_plans').insert(toRow(newPlan)));
     memoryPPMPlans.unshift(newPlan);
+    saveStore('shever_ppm_plans', memoryPPMPlans);
 
     // Also generate initial schedule run
     const newSched: PPMSchedule = {
-      id: 'ppm-sched-' + Date.now(),
+      id: newId(),
       schedule_number: `PPM-2026-${String(seq).padStart(6, '0')}`,
       ppm_plan_id: newPlan.id,
       due_date: newPlan.next_due_date,
@@ -1265,14 +1333,18 @@ export const cafmDataService = {
       is_overdue: false,
       created_at: new Date().toISOString(),
     };
+    await cloudWrite('Creating PPM schedule', () =>
+      supabase.from('ppm_schedules').insert(toRow(newSched))
+    );
     memoryPPMSchedules.unshift(newSched);
+    saveStore('shever_ppm_schedules', memoryPPMSchedules);
 
     return newPlan;
   },
 
   async createBuilding(bldData: Partial<Building>): Promise<Building> {
     const newBld: Building = {
-      id: 'bld-' + Date.now(),
+      id: newId(),
       code: bldData.code || `BLD-${memoryBuildings.length + 1}`,
       name: bldData.name || 'New Corporate Facility',
       address: bldData.address || 'Dubai, UAE',
@@ -1282,25 +1354,29 @@ export const cafmDataService = {
       contact_phone: bldData.contact_phone,
       created_at: new Date().toISOString(),
     };
+    await cloudWrite('Creating building', () => supabase.from('buildings').insert(toRow(newBld)));
     memoryBuildings.push(newBld);
+    saveStore('shever_buildings', memoryBuildings);
     return newBld;
   },
 
   async createFloor(floorData: Partial<Floor>): Promise<Floor> {
     const newFloor: Floor = {
-      id: 'flr-' + Date.now(),
+      id: newId(),
       building_id: floorData.building_id || memoryBuildings[0].id,
       floor_number: floorData.floor_number || 1,
       name: floorData.name || 'Level 1',
       created_at: new Date().toISOString(),
     };
+    await cloudWrite('Creating floor', () => supabase.from('floors').insert(toRow(newFloor)));
     memoryFloors.push(newFloor);
+    saveStore('shever_floors', memoryFloors);
     return newFloor;
   },
 
   async createLocation(locData: Partial<Location>): Promise<Location> {
     const newLoc: Location = {
-      id: 'loc-' + Date.now(),
+      id: newId(),
       floor_id: locData.floor_id || memoryFloors[0].id,
       code: locData.code || `LOC-${Date.now().toString().slice(-4)}`,
       name: locData.name || 'Equipment Room',
@@ -1308,42 +1384,49 @@ export const cafmDataService = {
       zone: locData.zone || 'North Wing',
       created_at: new Date().toISOString(),
     };
+    await cloudWrite('Creating location', () => supabase.from('locations').insert(toRow(newLoc)));
     memoryLocations.push(newLoc);
+    saveStore('shever_locations', memoryLocations);
     return newLoc;
   },
 
   async deleteBuilding(id: string): Promise<boolean> {
+    await cloudWrite('Deleting building', () => supabase.from('buildings').delete().eq('id', id));
     memoryBuildings = memoryBuildings.filter((b) => b.id !== id);
     const deletedFloorIds = memoryFloors.filter((f) => f.building_id === id).map((f) => f.id);
     memoryFloors = memoryFloors.filter((f) => f.building_id !== id);
     memoryLocations = memoryLocations.filter((l) => !deletedFloorIds.includes(l.floor_id));
-    if (isSupabaseConfigured()) {
-      await supabase.from('buildings').delete().eq('id', id);
-    }
+    saveStore('shever_buildings', memoryBuildings);
+    saveStore('shever_floors', memoryFloors);
+    saveStore('shever_locations', memoryLocations);
     return true;
   },
 
   async deleteFloor(id: string): Promise<boolean> {
+    await cloudWrite('Deleting floor', () => supabase.from('floors').delete().eq('id', id));
     memoryFloors = memoryFloors.filter((f) => f.id !== id);
     memoryLocations = memoryLocations.filter((l) => l.floor_id !== id);
-    if (isSupabaseConfigured()) {
-      await supabase.from('floors').delete().eq('id', id);
-    }
+    saveStore('shever_floors', memoryFloors);
+    saveStore('shever_locations', memoryLocations);
     return true;
   },
 
   async deleteLocation(id: string): Promise<boolean> {
+    await cloudWrite('Deleting location', () => supabase.from('locations').delete().eq('id', id));
     memoryLocations = memoryLocations.filter((l) => l.id !== id);
-    if (isSupabaseConfigured()) {
-      await supabase.from('locations').delete().eq('id', id);
-    }
+    saveStore('shever_locations', memoryLocations);
     return true;
   },
 
   async getAuditLogs(): Promise<AuditLog[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
-      if (data && data.length > 0) return data;
+    const cloud = await cloudRead<AuditLog>(
+      'audit_logs',
+      (q) => q.order('created_at', { ascending: false }).limit(50),
+      'shever_audit_logs'
+    );
+    if (cloud && cloud.length > 0) {
+      memoryAuditLogs = cloud;
+      return cloud;
     }
     return memoryAuditLogs;
   },

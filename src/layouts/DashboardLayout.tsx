@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Navbar } from './Navbar';
 import { CommandPalette } from '../components/CommandPalette';
+import { CloudSyncBanner } from '../components/CloudSyncBanner';
 
 export const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,8 @@ export const DashboardLayout: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <Navbar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
+
+        <CloudSyncBanner />
 
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-50/50 dark:bg-slate-950/50">
           <div className="w-full max-w-full">

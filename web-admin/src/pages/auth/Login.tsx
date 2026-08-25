@@ -19,7 +19,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, error: authError } = useAuth();
   const { isDark, setTheme } = useTheme();
 
   const [identifier, setIdentifier] = useState('');
@@ -36,11 +36,9 @@ export const Login: React.FC = () => {
 
     try {
       const success = await login(identifier, password);
-      if (success) {
-        navigate('/dashboard');
-      } else {
-        setError('Invalid User ID / Email or Password. Please try again.');
-      }
+      if (success) navigate('/dashboard');
+      // On failure the reason is already in authError (wrong password vs.
+      // database not set up) and is rendered below.
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -175,10 +173,10 @@ export const Login: React.FC = () => {
             </p>
           </div>
 
-          {error && (
-            <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-400 flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+          {(error || authError) && (
+            <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl text-xs text-rose-700 dark:text-rose-400 flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error || authError}</span>
             </div>
           )}
 
