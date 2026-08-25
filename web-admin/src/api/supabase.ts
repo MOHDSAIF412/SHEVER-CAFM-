@@ -555,38 +555,39 @@ const SEED_SETTINGS: SystemSettings = {
 };
 
 // ==============================================================================
-// IN-MEMORY STATE FOR DEV PREVIEW & OFFLINE RUNS WITH LOCALSTORAGE PERSISTENCE
+// IN-MEMORY STATE FOR DEV PREVIEW & OFFLINE RUNS WITH INSTANT LOCALSTORAGE CACHE
 // ==============================================================================
-const loadStoredUsers = (): UserProfile[] => {
+const loadStore = <T>(key: string, seed: T): T => {
   try {
-    const saved = localStorage.getItem('shever_users_registry');
+    const saved = localStorage.getItem(key);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed as T;
+      if (!Array.isArray(parsed) && parsed && typeof parsed === 'object') return parsed as T;
     }
   } catch (e) {}
-  return [...SEED_USERS];
+  return seed;
 };
 
-const saveUsersToStorage = (users: UserProfile[]) => {
+const saveStore = <T>(key: string, data: T) => {
   try {
-    localStorage.setItem('shever_users_registry', JSON.stringify(users));
+    localStorage.setItem(key, JSON.stringify(data));
   } catch (e) {}
 };
 
-let memoryUsers = loadStoredUsers();
-let memoryBuildings = [...SEED_BUILDINGS];
-let memoryFloors = [...SEED_FLOORS];
-let memoryLocations = [...SEED_LOCATIONS];
-let memoryCategories = [...SEED_CATEGORIES];
-let memorySubcategories = [...SEED_SUBCATEGORIES];
-let memoryAssets = [...SEED_ASSETS];
-let memoryWorkOrders = [...SEED_WORK_ORDERS];
-let memoryPPMPlans = [...SEED_PPM_PLANS];
-let memoryPPMSchedules = [...SEED_PPM_SCHEDULES];
-let memoryMaterials = [...SEED_MATERIALS];
-let memorySettings = { ...SEED_SETTINGS };
-let memoryAuditLogs: AuditLog[] = [
+let memoryUsers = loadStore('shever_users_registry', [...SEED_USERS]);
+let memoryBuildings = loadStore('shever_buildings', [...SEED_BUILDINGS]);
+let memoryFloors = loadStore('shever_floors', [...SEED_FLOORS]);
+let memoryLocations = loadStore('shever_locations', [...SEED_LOCATIONS]);
+let memoryCategories = loadStore('shever_categories', [...SEED_CATEGORIES]);
+let memorySubcategories = loadStore('shever_subcategories', [...SEED_SUBCATEGORIES]);
+let memoryAssets = loadStore('shever_assets', [...SEED_ASSETS]);
+let memoryWorkOrders = loadStore('shever_work_orders', [...SEED_WORK_ORDERS]);
+let memoryPPMPlans = loadStore('shever_ppm_plans', [...SEED_PPM_PLANS]);
+let memoryPPMSchedules = loadStore('shever_ppm_schedules', [...SEED_PPM_SCHEDULES]);
+let memoryMaterials = loadStore('shever_materials', [...SEED_MATERIALS]);
+let memorySettings = loadStore('shever_settings', { ...SEED_SETTINGS });
+let memoryAuditLogs = loadStore('shever_audit_logs', [
   {
     id: 'l0000000-0000-0000-0000-000000000001',
     user_email: 'admin@shever.com',
@@ -594,7 +595,7 @@ let memoryAuditLogs: AuditLog[] = [
     module: 'CORE',
     created_at: new Date(Date.now() - 3600 * 1000).toISOString(),
   }
-];
+]);
 
 // Helper to populate relations
 const populateWorkOrder = (wo: WorkOrder): WorkOrder => {
@@ -643,23 +644,16 @@ const safeSupabase = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> =>
 export const cafmDataService = {
   // Authentication & Users
   async getUsers(): Promise<UserProfile[]> {
-    const stored = loadStoredUsers();
-    if (stored && stored.length > 0) {
-      memoryUsers = stored;
-    }
+    const local = memoryUsers.length > 0 ? memoryUsers : SEED_USERS;
     if (isSupabaseConfigured()) {
-      try {
-        const { data, error } = await supabase.from('profiles').select('*');
+      supabase.from('profiles').select('*').then(({ data, error }) => {
         if (!error && data && data.length > 0) {
           memoryUsers = data;
-          saveUsersToStorage(data);
-          return data;
+          saveStore('shever_users_registry', memoryUsers);
         }
-      } catch (e) {
-        console.warn('Supabase profiles notice:', e);
-      }
+      }).catch(() => {});
     }
-    return memoryUsers;
+    return local;
   },
 
   async getTechnicians(): Promise<UserProfile[]> {
@@ -707,15 +701,16 @@ export const cafmDataService = {
 
   // Work Orders CRUD & Actions
   async getWorkOrders(): Promise<WorkOrder[]> {
-    const fallback = memoryWorkOrders.map(populateWorkOrder);
-    return safeSupabase(async () => {
-      const { data, error } = await supabase
-        .from('work_orders')
-        .select('*')
-        .order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) return data.map(populateWorkOrder);
-      return fallback;
-    }, fallback);
+    const local = memoryWorkOrders.length > 0 ? memoryWorkOrders : SEED_WORK_ORDERS;
+    if (isSupabaseConfigured()) {
+      supabase.from('work_orders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryWorkOrders = data;
+          saveStore('shever_work_orders', memoryWorkOrders);
+        }
+      }).catch(() => {});
+    }
+    return local.map(populateWorkOrder);
   },
 
   async getWorkOrderById(id: string): Promise<WorkOrder | undefined> {
@@ -753,6 +748,7 @@ export const cafmDataService = {
       } catch (e) {}
     }
     memoryWorkOrders.unshift(newWo);
+    saveStore('shever_work_orders', memoryWorkOrders);
     return populateWorkOrder(newWo);
   },
 
@@ -786,6 +782,8 @@ export const cafmDataService = {
       target.closed_at = new Date().toISOString();
     }
 
+    saveStore('shever_work_orders', memoryWorkOrders);
+
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('work_orders').update(target).eq('id', id);
@@ -805,6 +803,8 @@ export const cafmDataService = {
       }
     });
 
+    saveStore('shever_work_orders', memoryWorkOrders);
+
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('work_orders').update({ status: 'Closed', closed_at: now, updated_at: now }).in('id', ids);
@@ -817,8 +817,11 @@ export const cafmDataService = {
     const target = memoryWorkOrders.find((w) => w.id === id);
     if (!target) return undefined;
     Object.assign(target, updates);
+    saveStore('shever_work_orders', memoryWorkOrders);
     if (isSupabaseConfigured()) {
-      await supabase.from('work_orders').update(updates).eq('id', id);
+      try {
+        await supabase.from('work_orders').update(updates).eq('id', id);
+      } catch (e) {}
     }
     return populateWorkOrder(target);
   },
@@ -828,6 +831,7 @@ export const cafmDataService = {
     if (index !== -1) {
       memoryWorkOrders.splice(index, 1);
     }
+    saveStore('shever_work_orders', memoryWorkOrders);
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('work_orders').delete().eq('id', id);
@@ -838,6 +842,7 @@ export const cafmDataService = {
 
   async bulkDeleteWorkOrders(ids: string[]): Promise<boolean> {
     memoryWorkOrders = memoryWorkOrders.filter((w) => !ids.includes(w.id));
+    saveStore('shever_work_orders', memoryWorkOrders);
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('work_orders').delete().in('id', ids);
@@ -848,15 +853,16 @@ export const cafmDataService = {
 
   // Assets
   async getAssets(): Promise<Asset[]> {
-    const fallback = memoryAssets.map(populateAsset);
-    return safeSupabase(async () => {
-      const { data, error } = await supabase
-        .from('assets')
-        .select('*')
-        .order('asset_number');
-      if (!error && data && data.length > 0) return data.map(populateAsset);
-      return fallback;
-    }, fallback);
+    const local = memoryAssets.length > 0 ? memoryAssets : SEED_ASSETS;
+    if (isSupabaseConfigured()) {
+      supabase.from('assets').select('*').order('asset_number').then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryAssets = data;
+          saveStore('shever_assets', memoryAssets);
+        }
+      }).catch(() => {});
+    }
+    return local.map(populateAsset);
   },
 
   async getAssetById(id: string): Promise<Asset | undefined> {
@@ -892,6 +898,7 @@ export const cafmDataService = {
       } catch (e) {}
     }
     memoryAssets.unshift(newAsset);
+    saveStore('shever_assets', memoryAssets);
     return populateAsset(newAsset);
   },
 
@@ -899,6 +906,7 @@ export const cafmDataService = {
     const target = memoryAssets.find((a) => a.id === id);
     if (!target) throw new Error('Asset not found');
     Object.assign(target, assetData);
+    saveStore('shever_assets', memoryAssets);
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('assets').update(assetData).eq('id', id);
@@ -912,6 +920,7 @@ export const cafmDataService = {
     if (index !== -1) {
       memoryAssets.splice(index, 1);
     }
+    saveStore('shever_assets', memoryAssets);
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('assets').delete().eq('id', id);
@@ -922,31 +931,39 @@ export const cafmDataService = {
 
   // PPM
   async getPPMPlans(): Promise<PPMPlan[]> {
-    const fallback = memoryPPMPlans.map((p) => ({
+    const local = memoryPPMPlans.length > 0 ? memoryPPMPlans : SEED_PPM_PLANS;
+    if (isSupabaseConfigured()) {
+      supabase.from('ppm_plans').select('*').then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryPPMPlans = data;
+          saveStore('shever_ppm_plans', memoryPPMPlans);
+        }
+      }).catch(() => {});
+    }
+    return local.map((p) => ({
       ...p,
       asset: memoryAssets.find((a) => a.id === p.asset_id),
       building: memoryBuildings.find((b) => b.id === p.building_id),
       category: memoryCategories.find((c) => c.id === p.category_id),
       assigned_technician: memoryUsers.find((u) => u.id === p.assigned_technician_id),
     }));
-    return safeSupabase(async () => {
-      const { data, error } = await supabase.from('ppm_plans').select('*');
-      if (!error && data && data.length > 0) return data;
-      return fallback;
-    }, fallback);
   },
 
   async getPPMSchedules(): Promise<PPMSchedule[]> {
-    const fallback = memoryPPMSchedules.map((s) => ({
+    const local = memoryPPMSchedules.length > 0 ? memoryPPMSchedules : SEED_PPM_SCHEDULES;
+    if (isSupabaseConfigured()) {
+      supabase.from('ppm_schedules').select('*').then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryPPMSchedules = data;
+          saveStore('shever_ppm_schedules', memoryPPMSchedules);
+        }
+      }).catch(() => {});
+    }
+    return local.map((s) => ({
       ...s,
       plan: memoryPPMPlans.find((p) => p.id === s.ppm_plan_id),
       assigned_technician: memoryUsers.find((u) => u.id === s.assigned_technician_id),
     }));
-    return safeSupabase(async () => {
-      const { data, error } = await supabase.from('ppm_schedules').select('*');
-      if (!error && data && data.length > 0) return data;
-      return fallback;
-    }, fallback);
   },
 
   async deletePPMSchedule(id: string): Promise<boolean> {
@@ -954,6 +971,7 @@ export const cafmDataService = {
     if (index !== -1) {
       memoryPPMSchedules.splice(index, 1);
     }
+    saveStore('shever_ppm_schedules', memoryPPMSchedules);
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('ppm_schedules').delete().eq('id', id);
@@ -971,6 +989,8 @@ export const cafmDataService = {
     for (let i = childIndices.length - 1; i >= 0; i--) {
       memoryPPMSchedules.splice(childIndices[i], 1);
     }
+    saveStore('shever_ppm_plans', memoryPPMPlans);
+    saveStore('shever_ppm_schedules', memoryPPMSchedules);
     if (isSupabaseConfigured()) {
       try {
         await supabase.from('ppm_schedules').delete().eq('ppm_plan_id', id);
@@ -982,68 +1002,99 @@ export const cafmDataService = {
 
   // Master Data
   async getBuildings(): Promise<Building[]> {
-    return safeSupabase(async () => {
-      const { data, error } = await supabase.from('buildings').select('*');
-      if (!error && data && data.length > 0) return data;
-      return memoryBuildings;
-    }, memoryBuildings);
+    const local = memoryBuildings.length > 0 ? memoryBuildings : SEED_BUILDINGS;
+    if (isSupabaseConfigured()) {
+      supabase.from('buildings').select('*').then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryBuildings = data;
+          saveStore('shever_buildings', memoryBuildings);
+        }
+      }).catch(() => {});
+    }
+    return local;
   },
 
   async getFloors(buildingId?: string): Promise<Floor[]> {
     const fallback = buildingId ? memoryFloors.filter((f) => f.building_id === buildingId) : memoryFloors;
-    return safeSupabase(async () => {
+    if (isSupabaseConfigured()) {
       let query = supabase.from('floors').select('*');
       if (buildingId) query = query.eq('building_id', buildingId);
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) return data;
-      return fallback;
-    }, fallback);
+      query.then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryFloors = data;
+          saveStore('shever_floors', memoryFloors);
+        }
+      }).catch(() => {});
+    }
+    return fallback;
   },
 
   async getLocations(floorId?: string): Promise<Location[]> {
     const fallback = floorId ? memoryLocations.filter((l) => l.floor_id === floorId) : memoryLocations;
-    return safeSupabase(async () => {
+    if (isSupabaseConfigured()) {
       let query = supabase.from('locations').select('*');
       if (floorId) query = query.eq('floor_id', floorId);
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) return data;
-      return fallback;
-    }, fallback);
+      query.then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryLocations = data;
+          saveStore('shever_locations', memoryLocations);
+        }
+      }).catch(() => {});
+    }
+    return fallback;
   },
 
   async getCategories(): Promise<Category[]> {
-    return safeSupabase(async () => {
-      const { data, error } = await supabase.from('categories').select('*');
-      if (!error && data && data.length > 0) return data;
-      return memoryCategories;
-    }, memoryCategories);
+    const local = memoryCategories.length > 0 ? memoryCategories : SEED_CATEGORIES;
+    if (isSupabaseConfigured()) {
+      supabase.from('categories').select('*').then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryCategories = data;
+          saveStore('shever_categories', memoryCategories);
+        }
+      }).catch(() => {});
+    }
+    return local;
   },
 
   async getSubcategories(categoryId?: string): Promise<Subcategory[]> {
     const fallback = categoryId ? memorySubcategories.filter((s) => s.category_id === categoryId) : memorySubcategories;
-    return safeSupabase(async () => {
+    if (isSupabaseConfigured()) {
       let query = supabase.from('subcategories').select('*');
       if (categoryId) query = query.eq('category_id', categoryId);
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) return data;
-      return fallback;
-    }, fallback);
+      query.then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memorySubcategories = data;
+          saveStore('shever_subcategories', memorySubcategories);
+        }
+      }).catch(() => {});
+    }
+    return fallback;
   },
 
   async getMaterials(): Promise<Material[]> {
-    return safeSupabase(async () => {
-      const { data, error } = await supabase.from('materials').select('*');
-      if (!error && data && data.length > 0) return data;
-      return memoryMaterials;
-    }, memoryMaterials);
+    const local = memoryMaterials.length > 0 ? memoryMaterials : SEED_MATERIALS;
+    if (isSupabaseConfigured()) {
+      supabase.from('materials').select('*').then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          memoryMaterials = data;
+          saveStore('shever_materials', memoryMaterials);
+        }
+      }).catch(() => {});
+    }
+    return local;
   },
 
   async getSystemSettings(): Promise<SystemSettings> {
-    return safeSupabase(async () => {
-      const { data, error } = await supabase.from('system_settings').select('*').single();
-      if (!error && data) return data;
-      return memorySettings;
-    }, memorySettings);
+    if (isSupabaseConfigured()) {
+      supabase.from('system_settings').select('*').single().then(({ data, error }) => {
+        if (!error && data) {
+          memorySettings = data;
+          saveStore('shever_settings', memorySettings);
+        }
+      }).catch(() => {});
+    }
+    return memorySettings;
   },
 
   async createUser(userData: Partial<UserProfile> & { password?: string }): Promise<UserProfile> {
