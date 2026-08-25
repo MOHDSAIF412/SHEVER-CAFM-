@@ -71,9 +71,10 @@ export const Dashboard: React.FC = () => {
   const [endDate, setEndDate] = useState<string>('');
 
   useEffect(() => {
+    let mounted = true;
     const load = async () => {
       try {
-        const [s, w, p, a, b, c] = await Promise.all([
+        const [s, w, p, a, b, c] = await Promise.allSettled([
           cafmDataService.getDashboardStats(),
           cafmDataService.getWorkOrders(),
           cafmDataService.getPPMSchedules(),
@@ -81,17 +82,23 @@ export const Dashboard: React.FC = () => {
           cafmDataService.getBuildings(),
           cafmDataService.getCategories(),
         ]);
-        setStats(s);
-        setWorkOrders(w);
-        setPpmSchedules(p);
-        setAssets(a);
-        setBuildings(b);
-        setCategories(c);
+        if (!mounted) return;
+        if (s.status === 'fulfilled') setStats(s.value);
+        if (w.status === 'fulfilled') setWorkOrders(w.value);
+        if (p.status === 'fulfilled') setPpmSchedules(p.value);
+        if (a.status === 'fulfilled') setAssets(a.value);
+        if (b.status === 'fulfilled') setBuildings(b.value);
+        if (c.status === 'fulfilled') setCategories(c.value);
+      } catch (err) {
+        console.warn('Dashboard load error handled:', err);
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
     load();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Filter application logic

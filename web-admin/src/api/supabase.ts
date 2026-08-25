@@ -622,6 +622,21 @@ const populateAsset = (ast: Asset): Asset => {
   };
 };
 
+// Safe Supabase execution with timeout & fallback guarantee
+const safeSupabase = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+  if (!isSupabaseConfigured()) return fallback;
+  try {
+    const timeoutPromise = new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase query timeout')), 1500)
+    );
+    const result = await Promise.race([fn(), timeoutPromise]);
+    return result !== undefined && result !== null ? result : fallback;
+  } catch (err) {
+    console.warn('Supabase query fallback applied:', err);
+    return fallback;
+  }
+};
+
 // ==============================================================================
 // CAFM DATA SERVICE (Unified API with Supabase + Live In-Memory Fallback)
 // ==============================================================================
@@ -692,24 +707,15 @@ export const cafmDataService = {
 
   // Work Orders CRUD & Actions
   async getWorkOrders(): Promise<WorkOrder[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase
+    const fallback = memoryWorkOrders.map(populateWorkOrder);
+    return safeSupabase(async () => {
+      const { data, error } = await supabase
         .from('work_orders')
-        .select(`
-          *,
-          building:buildings(*),
-          floor:floors(*),
-          location:locations(*),
-          asset:assets(*),
-          category:categories(*),
-          subcategory:subcategories(*),
-          assigned_technician:profiles!work_orders_assigned_technician_id_fkey(*),
-          assigned_supervisor:profiles!work_orders_assigned_supervisor_id_fkey(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
-      if (data && data.length > 0) return data;
-    }
-    return memoryWorkOrders.map(populateWorkOrder);
+      if (!error && data && data.length > 0) return data.map(populateWorkOrder);
+      return fallback;
+    }, fallback);
   },
 
   async getWorkOrderById(id: string): Promise<WorkOrder | undefined> {
@@ -742,7 +748,9 @@ export const cafmDataService = {
     };
 
     if (isSupabaseConfigured()) {
-      await supabase.from('work_orders').insert(newWo);
+      try {
+        await supabase.from('work_orders').insert(newWo);
+      } catch (e) {}
     }
     memoryWorkOrders.unshift(newWo);
     return populateWorkOrder(newWo);
@@ -779,9 +787,30 @@ export const cafmDataService = {
     }
 
     if (isSupabaseConfigured()) {
-      await supabase.from('work_orders').update(target).eq('id', id);
+      try {
+        await supabase.from('work_orders').update(target).eq('id', id);
+      } catch (e) {}
     }
     return populateWorkOrder(target);
+  },
+
+  async bulkCloseWorkOrders(ids: string[]): Promise<boolean> {
+    const now = new Date().toISOString();
+    ids.forEach((id) => {
+      const target = memoryWorkOrders.find((w) => w.id === id);
+      if (target) {
+        target.status = 'Closed';
+        target.closed_at = now;
+        target.updated_at = now;
+      }
+    });
+
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('work_orders').update({ status: 'Closed', closed_at: now, updated_at: now }).in('id', ids);
+      } catch (e) {}
+    }
+    return true;
   },
 
   async updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined> {
@@ -800,28 +829,34 @@ export const cafmDataService = {
       memoryWorkOrders.splice(index, 1);
     }
     if (isSupabaseConfigured()) {
-      await supabase.from('work_orders').delete().eq('id', id);
+      try {
+        await supabase.from('work_orders').delete().eq('id', id);
+      } catch (e) {}
+    }
+    return true;
+  },
+
+  async bulkDeleteWorkOrders(ids: string[]): Promise<boolean> {
+    memoryWorkOrders = memoryWorkOrders.filter((w) => !ids.includes(w.id));
+    if (isSupabaseConfigured()) {
+      try {
+        await supabase.from('work_orders').delete().in('id', ids);
+      } catch (e) {}
     }
     return true;
   },
 
   // Assets
   async getAssets(): Promise<Asset[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase
+    const fallback = memoryAssets.map(populateAsset);
+    return safeSupabase(async () => {
+      const { data, error } = await supabase
         .from('assets')
-        .select(`
-          *,
-          building:buildings(*),
-          floor:floors(*),
-          location:locations(*),
-          category:categories(*),
-          subcategory:subcategories(*)
-        `)
+        .select('*')
         .order('asset_number');
-      if (data && data.length > 0) return data;
-    }
-    return memoryAssets.map(populateAsset);
+      if (!error && data && data.length > 0) return data.map(populateAsset);
+      return fallback;
+    }, fallback);
   },
 
   async getAssetById(id: string): Promise<Asset | undefined> {
@@ -852,7 +887,9 @@ export const cafmDataService = {
     };
 
     if (isSupabaseConfigured()) {
-      await supabase.from('assets').insert(newAsset);
+      try {
+        await supabase.from('assets').insert(newAsset);
+      } catch (e) {}
     }
     memoryAssets.unshift(newAsset);
     return populateAsset(newAsset);
@@ -863,7 +900,9 @@ export const cafmDataService = {
     if (!target) throw new Error('Asset not found');
     Object.assign(target, assetData);
     if (isSupabaseConfigured()) {
-      await supabase.from('assets').update(assetData).eq('id', id);
+      try {
+        await supabase.from('assets').update(assetData).eq('id', id);
+      } catch (e) {}
     }
     return populateAsset(target);
   },
@@ -874,36 +913,40 @@ export const cafmDataService = {
       memoryAssets.splice(index, 1);
     }
     if (isSupabaseConfigured()) {
-      await supabase.from('assets').delete().eq('id', id);
+      try {
+        await supabase.from('assets').delete().eq('id', id);
+      } catch (e) {}
     }
     return true;
   },
 
   // PPM
   async getPPMPlans(): Promise<PPMPlan[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('ppm_plans').select('*, asset:assets(*), category:categories(*)');
-      if (data && data.length > 0) return data;
-    }
-    return memoryPPMPlans.map((p) => ({
+    const fallback = memoryPPMPlans.map((p) => ({
       ...p,
       asset: memoryAssets.find((a) => a.id === p.asset_id),
       building: memoryBuildings.find((b) => b.id === p.building_id),
       category: memoryCategories.find((c) => c.id === p.category_id),
       assigned_technician: memoryUsers.find((u) => u.id === p.assigned_technician_id),
     }));
+    return safeSupabase(async () => {
+      const { data, error } = await supabase.from('ppm_plans').select('*');
+      if (!error && data && data.length > 0) return data;
+      return fallback;
+    }, fallback);
   },
 
   async getPPMSchedules(): Promise<PPMSchedule[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('ppm_schedules').select('*, plan:ppm_plans(*), assigned_technician:profiles(*)');
-      if (data && data.length > 0) return data;
-    }
-    return memoryPPMSchedules.map((s) => ({
+    const fallback = memoryPPMSchedules.map((s) => ({
       ...s,
       plan: memoryPPMPlans.find((p) => p.id === s.ppm_plan_id),
       assigned_technician: memoryUsers.find((u) => u.id === s.assigned_technician_id),
     }));
+    return safeSupabase(async () => {
+      const { data, error } = await supabase.from('ppm_schedules').select('*');
+      if (!error && data && data.length > 0) return data;
+      return fallback;
+    }, fallback);
   },
 
   async deletePPMSchedule(id: string): Promise<boolean> {
@@ -912,7 +955,9 @@ export const cafmDataService = {
       memoryPPMSchedules.splice(index, 1);
     }
     if (isSupabaseConfigured()) {
-      await supabase.from('ppm_schedules').delete().eq('id', id);
+      try {
+        await supabase.from('ppm_schedules').delete().eq('id', id);
+      } catch (e) {}
     }
     return true;
   },
@@ -922,88 +967,88 @@ export const cafmDataService = {
     if (index !== -1) {
       memoryPPMPlans.splice(index, 1);
     }
-    // Also remove child schedules
     const childIndices = memoryPPMSchedules.map((s, idx) => s.ppm_plan_id === id ? idx : -1).filter(idx => idx !== -1);
     for (let i = childIndices.length - 1; i >= 0; i--) {
       memoryPPMSchedules.splice(childIndices[i], 1);
     }
     if (isSupabaseConfigured()) {
-      await supabase.from('ppm_schedules').delete().eq('ppm_plan_id', id);
-      await supabase.from('ppm_plans').delete().eq('id', id);
+      try {
+        await supabase.from('ppm_schedules').delete().eq('ppm_plan_id', id);
+        await supabase.from('ppm_plans').delete().eq('id', id);
+      } catch (e) {}
     }
     return true;
   },
 
   // Master Data
   async getBuildings(): Promise<Building[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('buildings').select('*');
-      if (data && data.length > 0) return data;
-    }
-    return memoryBuildings;
+    return safeSupabase(async () => {
+      const { data, error } = await supabase.from('buildings').select('*');
+      if (!error && data && data.length > 0) return data;
+      return memoryBuildings;
+    }, memoryBuildings);
   },
 
   async getFloors(buildingId?: string): Promise<Floor[]> {
-    if (isSupabaseConfigured()) {
+    const fallback = buildingId ? memoryFloors.filter((f) => f.building_id === buildingId) : memoryFloors;
+    return safeSupabase(async () => {
       let query = supabase.from('floors').select('*');
       if (buildingId) query = query.eq('building_id', buildingId);
-      const { data } = await query;
-      if (data && data.length > 0) return data;
-    }
-    if (buildingId) return memoryFloors.filter((f) => f.building_id === buildingId);
-    return memoryFloors;
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) return data;
+      return fallback;
+    }, fallback);
   },
 
   async getLocations(floorId?: string): Promise<Location[]> {
-    if (isSupabaseConfigured()) {
+    const fallback = floorId ? memoryLocations.filter((l) => l.floor_id === floorId) : memoryLocations;
+    return safeSupabase(async () => {
       let query = supabase.from('locations').select('*');
       if (floorId) query = query.eq('floor_id', floorId);
-      const { data } = await query;
-      if (data && data.length > 0) return data;
-    }
-    if (floorId) return memoryLocations.filter((l) => l.floor_id === floorId);
-    return memoryLocations;
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) return data;
+      return fallback;
+    }, fallback);
   },
 
   async getCategories(): Promise<Category[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('categories').select('*');
-      if (data && data.length > 0) return data;
-    }
-    return memoryCategories;
+    return safeSupabase(async () => {
+      const { data, error } = await supabase.from('categories').select('*');
+      if (!error && data && data.length > 0) return data;
+      return memoryCategories;
+    }, memoryCategories);
   },
 
   async getSubcategories(categoryId?: string): Promise<Subcategory[]> {
-    if (isSupabaseConfigured()) {
+    const fallback = categoryId ? memorySubcategories.filter((s) => s.category_id === categoryId) : memorySubcategories;
+    return safeSupabase(async () => {
       let query = supabase.from('subcategories').select('*');
       if (categoryId) query = query.eq('category_id', categoryId);
-      const { data } = await query;
-      if (data && data.length > 0) return data;
-    }
-    if (categoryId) return memorySubcategories.filter((s) => s.category_id === categoryId);
-    return memorySubcategories;
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) return data;
+      return fallback;
+    }, fallback);
   },
 
   async getMaterials(): Promise<Material[]> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('materials').select('*');
-      if (data && data.length > 0) return data;
-    }
-    return memoryMaterials;
+    return safeSupabase(async () => {
+      const { data, error } = await supabase.from('materials').select('*');
+      if (!error && data && data.length > 0) return data;
+      return memoryMaterials;
+    }, memoryMaterials);
   },
 
   async getSystemSettings(): Promise<SystemSettings> {
-    if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('system_settings').select('*').single();
-      if (data) return data;
-    }
-    return memorySettings;
+    return safeSupabase(async () => {
+      const { data, error } = await supabase.from('system_settings').select('*').single();
+      if (!error && data) return data;
+      return memorySettings;
+    }, memorySettings);
   },
 
   async createUser(userData: Partial<UserProfile> & { password?: string }): Promise<UserProfile> {
     const seq = memoryUsers.length + 101;
     const newUser: UserProfile = {
-      id: userData.id || 'u-' + Date.now(),
       employee_id: userData.employee_id || `EMP-${seq}`,
       email: userData.email || `user${Date.now()}@shever.com`,
       password: userData.password || 'Password123!',
