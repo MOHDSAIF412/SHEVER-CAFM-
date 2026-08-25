@@ -633,8 +633,16 @@ export const cafmDataService = {
       memoryUsers = stored;
     }
     if (isSupabaseConfigured()) {
-      const { data } = await supabase.from('profiles').select('*');
-      if (data && data.length > 0) return data;
+      try {
+        const { data, error } = await supabase.from('profiles').select('*');
+        if (!error && data && data.length > 0) {
+          memoryUsers = data;
+          saveUsersToStorage(data);
+          return data;
+        }
+      } catch (e) {
+        console.warn('Supabase profiles notice:', e);
+      }
     }
     return memoryUsers;
   },
