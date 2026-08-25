@@ -2,9 +2,11 @@
   "name": "shever-technical-cafm",
   "private": true,
   "version": "1.0.0",
+  "workspaces": [
+    "web-admin"
+  ],
   "scripts": {
-    "build": "npm run build --prefix web-admin && cp -r web-admin/dist ./dist 2>/dev/null || xcopy /E /I /Y web-admin\\dist dist 2>nul || true",
-    "dev": "npm run dev --prefix web-admin",
-    "preview": "npm run preview --prefix web-admin"
+    "build": "npm run build --workspace=web-admin && (mkdir -p dist 2>/dev/null || md dist 2>nul || true) && (cp -r web-admin/dist/* dist/ 2>/dev/null || xcopy /E /I /Y web-admin\\dist dist 2>nul || true)",
+    "dev": "npm run dev --workspace=web-admin"
   }
 }
