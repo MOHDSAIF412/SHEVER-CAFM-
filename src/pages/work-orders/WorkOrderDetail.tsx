@@ -133,6 +133,25 @@ export const WorkOrderDetail: React.FC = () => {
     setShowEditReporterModal(false);
   };
 
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  /**
+   * The report now fetches the logo and the before/after photos before it can
+   * draw them, so building it is asynchronous. Failures surface instead of
+   * leaving the button looking stuck.
+   */
+  const handleGeneratePdf = async () => {
+    if (!workOrder) return;
+    setGeneratingPdf(true);
+    try {
+      await generateWorkOrderPDF(workOrder);
+    } catch (err: any) {
+      alert(err?.message || 'Could not build the report.');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  };
+
   if (loading || !workOrder) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -182,11 +201,12 @@ export const WorkOrderDetail: React.FC = () => {
         {/* Action Buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => generateWorkOrderPDF(workOrder)}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-sm transition-colors"
+            onClick={handleGeneratePdf}
+            disabled={generatingPdf}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-bold rounded-xl flex items-center space-x-2 shadow-sm transition-colors"
           >
             <Download className="w-4 h-4 text-teal-400" />
-            <span>Client PDF Report</span>
+            <span>{generatingPdf ? 'Building report…' : 'Client PDF Report'}</span>
           </button>
 
           {/* Workflow Action Buttons */}
