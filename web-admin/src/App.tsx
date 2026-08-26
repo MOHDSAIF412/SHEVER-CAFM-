@@ -11,6 +11,7 @@ import { WorkOrderDetail } from './pages/work-orders/WorkOrderDetail';
 import { PPMDashboard } from './pages/ppm/PPMDashboard';
 import { PPMSchedulesList } from './pages/ppm/PPMSchedulesList';
 import { PPMPlansList } from './pages/ppm/PPMPlansList';
+import { PPMChecklists } from './pages/ppm/PPMChecklists';
 import { AssetsList } from './pages/assets/AssetsList';
 import { AssetDetail } from './pages/assets/AssetDetail';
 import { BuildingsList } from './pages/facilities/BuildingsList';
@@ -18,6 +19,7 @@ import { MaterialsList } from './pages/materials/MaterialsList';
 import { ReportsCenter } from './pages/reports/ReportsCenter';
 import { UsersList } from './pages/users/UsersList';
 import { SystemSettings } from './pages/settings/SystemSettings';
+import { CategoriesList } from './pages/settings/CategoriesList';
 import { AuditLogs } from './pages/audit/AuditLogs';
 
 import { ThemeProvider } from './context/ThemeContext';
@@ -71,6 +73,7 @@ export function App() {
               <Route path="ppm/dashboard" element={<PPMDashboard />} />
               <Route path="ppm/schedules" element={<PPMSchedulesList />} />
               <Route path="ppm/plans" element={<PPMPlansList />} />
+              <Route path="ppm/checklists" element={<PPMChecklists />} />
 
               {/* Assets */}
               <Route path="assets" element={<AssetsList />} />
@@ -88,6 +91,7 @@ export function App() {
               {/* Administration & Security */}
               <Route path="users" element={<UsersList />} />
               <Route path="settings" element={<SystemSettings />} />
+              <Route path="settings/categories" element={<CategoriesList />} />
               <Route path="audit" element={<AuditLogs />} />
               <Route path="audit-logs" element={<AuditLogs />} />
             </Route>

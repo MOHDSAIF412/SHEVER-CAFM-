@@ -17,6 +17,8 @@ import {
   ChevronRight,
   Plus,
   Radio,
+  ClipboardCheck,
+  Layers,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -41,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
         { name: 'Work Orders', path: '/work-orders', icon: ClipboardList },
         { name: 'PPM Schedules', path: '/ppm/schedules', icon: CalendarCheck2 },
         { name: 'PPM Plans', path: '/ppm/plans', icon: CalendarDays },
+        { name: 'PPM Checklists', path: '/ppm/checklists', icon: ClipboardCheck },
       ],
     },
     {
@@ -64,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
             title: 'ADMINISTRATION',
             items: [
               { name: 'Users & Roles', path: '/users', icon: Users },
+              { name: 'Trades & Types', path: '/settings/categories', icon: Layers },
               { name: 'System Settings', path: '/settings', icon: Settings },
               { name: 'Audit Trail', path: '/audit', icon: ShieldAlert },
             ],

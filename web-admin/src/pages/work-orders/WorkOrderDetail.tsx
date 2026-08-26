@@ -14,19 +14,20 @@ import {
   Package,
   Camera,
   Image as ImageIcon,
-  UploadCloud,
   Trash2,
   ShieldAlert,
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
 import { WorkOrder, UserProfile } from '../../types';
 import { useAuth } from '../../context/AuthContext';
+import { PhotoUploader } from '../../components/PhotoUploader';
+import { SlaCountdown } from '../../components/SlaCountdown';
 import { generateWorkOrderPDF } from '../../utils/pdfGenerator';
 
 export const WorkOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isManager, isSupervisor, isAdmin } = useAuth();
+  const { isManager, isSupervisor, isAdmin, canEdit } = useAuth();
 
   const [workOrder, setWorkOrder] = useState<WorkOrder | null>(null);
   const [technicians, setTechnicians] = useState<UserProfile[]>([]);
@@ -51,8 +52,6 @@ export const WorkOrderDetail: React.FC = () => {
   const [assignmentToast, setAssignmentToast] = useState<{ show: boolean; text: string } | null>(null);
 
   // Photo state
-  const beforeFileInputRef = useRef<HTMLInputElement>(null);
-  const afterFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -132,19 +131,6 @@ export const WorkOrderDetail: React.FC = () => {
     });
     if (updated) setWorkOrder(updated);
     setShowEditReporterModal(false);
-  };
-
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>, photoType: 'before' | 'after') => {
-    const file = e.target.files?.[0];
-    if (!file || !workOrder) return;
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64Data = reader.result as string;
-      const updated = await cafmDataService.addWorkOrderPhoto(workOrder.id, photoType, base64Data);
-      if (updated) setWorkOrder(updated);
-    };
-    reader.readAsDataURL(file);
   };
 
   if (loading || !workOrder) {
@@ -352,90 +338,38 @@ export const WorkOrderDetail: React.FC = () => {
             )}
           </div>
 
-          {/* Photographic Evidence (Before / After Upload Section) */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          {/* Photographic Evidence - uploaded to Supabase Storage */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4 dark:bg-slate-900 dark:border-slate-800">
             <div className="flex items-center justify-between">
-              <h2 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+              <h2 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center space-x-2">
                 <Camera className="w-4 h-4 text-teal-600" />
-                <span>Photographic Evidence (Before & After)</span>
+                <span>Photographic Evidence</span>
               </h2>
               <span className="text-[11px] text-slate-400">Included in Client PDF Report</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Before Photo */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
-                    BEFORE MAINTENANCE
-                  </span>
-                </div>
-
-                {workOrder.before_photo_url ? (
-                  <div className="relative group rounded-lg overflow-hidden border border-slate-200 bg-black aspect-video flex items-center justify-center">
-                    <img src={workOrder.before_photo_url} alt="Before" className="object-cover w-full h-full" />
-                    <button
-                      onClick={() => beforeFileInputRef.current?.click()}
-                      className="absolute inset-0 bg-black/50 text-white text-xs font-bold opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                    >
-                      Change Photo
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => beforeFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-teal-500 hover:bg-teal-50/20 transition-colors"
-                  >
-                    <UploadCloud className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <span className="text-xs font-bold text-slate-700 block">Upload Before Photo</span>
-                    <span className="text-[10px] text-slate-400">JPG, PNG up to 10MB</span>
-                  </div>
-                )}
-                <input
-                  ref={beforeFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handlePhotoUpload(e, 'before')}
-                  className="hidden"
-                />
-              </div>
-
-              {/* After Photo */}
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                    AFTER MAINTENANCE (RESOLVED)
-                  </span>
-                </div>
-
-                {workOrder.after_photo_url ? (
-                  <div className="relative group rounded-lg overflow-hidden border border-slate-200 bg-black aspect-video flex items-center justify-center">
-                    <img src={workOrder.after_photo_url} alt="After" className="object-cover w-full h-full" />
-                    <button
-                      onClick={() => afterFileInputRef.current?.click()}
-                      className="absolute inset-0 bg-black/50 text-white text-xs font-bold opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                    >
-                      Change Photo
-                    </button>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => afterFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center cursor-pointer hover:border-emerald-500 hover:bg-emerald-50/20 transition-colors"
-                  >
-                    <UploadCloud className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-                    <span className="text-xs font-bold text-slate-700 block">Upload After Photo</span>
-                    <span className="text-[10px] text-slate-400">JPG, PNG up to 10MB</span>
-                  </div>
-                )}
-                <input
-                  ref={afterFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handlePhotoUpload(e, 'after')}
-                  className="hidden"
-                />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <PhotoUploader
+                workOrder={workOrder}
+                photoType="before"
+                label="Before"
+                canEdit={canEdit}
+                onChange={setWorkOrder}
+              />
+              <PhotoUploader
+                workOrder={workOrder}
+                photoType="progress"
+                label="In Progress"
+                canEdit={canEdit}
+                onChange={setWorkOrder}
+              />
+              <PhotoUploader
+                workOrder={workOrder}
+                photoType="after"
+                label="After"
+                canEdit={canEdit}
+                onChange={setWorkOrder}
+              />
             </div>
           </div>
 
@@ -594,17 +528,26 @@ export const WorkOrderDetail: React.FC = () => {
                 <Clock className="w-3.5 h-3.5 text-teal-600" />
                 <span>SLA Metrics</span>
               </span>
-              <div className="p-3 bg-slate-50 rounded-xl space-y-1.5 text-xs">
+              {/* Live countdown against resolution_due_at, which was stored
+                  but never surfaced, so breaches went unnoticed. */}
+              <SlaCountdown workOrder={workOrder} variant="panel" className="mb-2" />
+
+              <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl space-y-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Response Target:</span>
-                  <span className="font-semibold text-slate-800">
-                    {workOrder.response_time_minutes ? `${workOrder.response_time_minutes} min (Met)` : '15 min'}
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {workOrder.response_time_minutes ? `${workOrder.response_time_minutes} min` : '15 min'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Target Resolution:</span>
-                  <span className="font-semibold text-slate-800">
-                    {workOrder.target_completion_at ? new Date(workOrder.target_completion_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '4.0 hrs'}
+                  <span className="text-slate-500">Raised:</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {new Date(workOrder.created_at).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
               </div>
