@@ -141,10 +141,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
             {user?.role_id ? user.role_id.replace('_', ' ').toUpperCase() : 'ADMIN'}
           </span>
         </div>
-        <span className="text-slate-300 dark:text-slate-700">•</span>
-        <span className="text-slate-500 dark:text-slate-400 text-[11px]">
-          Portfolio Health: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">98.5% SLA</strong>
-        </span>
+        {/* "Portfolio Health: 98.5% SLA" used to sit here as a hard-coded
+            figure, shown even on an empty system. Removed rather than faked -
+            the real SLA number is on the dashboard, measured from the data. */}
       </div>
 
       {/* Right Controls */}
