@@ -23,11 +23,10 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-anon-key
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const isSupabaseConfigured = () => {
-  return (
-    import.meta.env.VITE_SUPABASE_URL &&
-    import.meta.env.VITE_SUPABASE_URL !== 'https://mock-shever.supabase.co' &&
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-  );
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  if (!url || url === 'https://mock-shever.supabase.co') return false;
+  if (url.includes('vercel.app')) return false;
+  return Boolean(import.meta.env.VITE_SUPABASE_ANON_KEY);
 };
 
 // ==============================================================================
@@ -708,6 +707,10 @@ export const supabaseHost = (() => {
 const describe = (err: any): string => {
   if (!err) return 'Unknown database error';
   const msg = err.message || err.details || String(err);
+
+  if (/<(!doctype|html)/i.test(msg)) {
+    return `Server returned a webpage (HTML) instead of database API response. Please verify your VITE_SUPABASE_URL is a valid https://xxx.supabase.co URL.`;
+  }
 
   // "Failed to fetch" means the request never reached the server, so there is
   // no database error to report — the address itself is unreachable. Naming the
