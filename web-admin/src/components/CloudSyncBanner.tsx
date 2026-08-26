@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, CloudOff } from 'lucide-react';
-import { cloudSync, isSupabaseConfigured } from '../api/supabase';
+import { cloudSync, isSupabaseConfigured, supabaseHost } from '../api/supabase';
 
 /**
  * Shows a banner whenever changes are NOT reaching the database, so a failed
@@ -38,6 +38,11 @@ export const CloudSyncBanner: React.FC = () => {
         <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
         <span>
           <strong>Database sync problem.</strong> {cloudSync.lastError}
+          <br />
+          <span className="opacity-70">
+            Connected to <code className="font-mono">{supabaseHost}</code> — check this is
+            your Supabase project URL.
+          </span>
         </span>
       </div>
     );
