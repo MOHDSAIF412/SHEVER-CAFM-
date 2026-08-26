@@ -59,7 +59,7 @@ export const AssetDetail: React.FC = () => {
         <div className="flex items-center space-x-3">
           <Link
             to="/assets"
-            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-2xs"
+            className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 shadow-sm"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
@@ -79,14 +79,14 @@ export const AssetDetail: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowQRModal(true)}
-            className="px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-2xs transition-colors"
+            className="px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
           >
             <QrCode className="w-4 h-4 text-teal-600" />
             <span>Print QR Badge</span>
           </button>
           <Link
             to={`/work-orders/new`}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow-2xs transition-colors flex items-center space-x-1.5"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl shadow-sm transition-colors flex items-center space-x-1.5"
           >
             <PlusCircle className="w-4 h-4" />
             <span>Report Breakdown</span>
@@ -97,7 +97,7 @@ export const AssetDetail: React.FC = () => {
       {/* Asset 360 Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Specifications Card */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs space-y-3 md:col-span-1">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-3 md:col-span-1">
           <h3 className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Asset Specifications
           </h3>
@@ -131,7 +131,7 @@ export const AssetDetail: React.FC = () => {
         {/* Maintenance History & PPM Schedules */}
         <div className="md:col-span-2 space-y-6">
           {/* Work Orders on this asset */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs space-y-3">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center space-x-2">
               <Activity className="w-4 h-4 text-teal-600" />
               <span>Corrective Maintenance History ({workOrders.length})</span>

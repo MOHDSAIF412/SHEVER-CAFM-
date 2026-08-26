@@ -31,7 +31,7 @@ export const AuditLogs: React.FC = () => {
         </p>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="relative max-w-sm w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />

@@ -139,7 +139,7 @@ export const PPMPlansList: React.FC = () => {
         {isAdmin && (
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-2xs transition-colors"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>New PPM Plan</span>
@@ -148,7 +148,7 @@ export const PPMPlansList: React.FC = () => {
       </div>
 
       {/* Filter toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -166,7 +166,7 @@ export const PPMPlansList: React.FC = () => {
         {filtered.map((plan) => (
           <div
             key={plan.id}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-xs hover:border-teal-500 transition-all flex flex-col justify-between"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm hover:border-teal-500 transition-all flex flex-col justify-between"
           >
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -362,7 +362,7 @@ export const PPMPlansList: React.FC = () => {
 
       {/* Delete PPM Plan Confirmation Modal */}
       {deletingPlan && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-rose-600">
               <ShieldAlert className="w-6 h-6 shrink-0" />

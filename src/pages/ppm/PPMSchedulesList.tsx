@@ -109,7 +109,7 @@ export const PPMSchedulesList: React.FC = () => {
       </div>
 
       {/* Filter toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:max-w-md">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -135,7 +135,7 @@ export const PPMSchedulesList: React.FC = () => {
       </div>
 
       {/* Schedules Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200/80 dark:border-slate-800">
@@ -191,7 +191,7 @@ export const PPMSchedulesList: React.FC = () => {
                     ) : (
                       <button
                         onClick={() => handleOpenInspection(s)}
-                        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-[11px] font-bold transition-colors shadow-2xs inline-block"
+                        className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-[11px] font-bold transition-colors shadow-sm inline-block"
                       >
                         Inspect & Sign
                       </button>
@@ -216,7 +216,7 @@ export const PPMSchedulesList: React.FC = () => {
 
       {/* Categorized Inspection Form Modal */}
       {selectedSchedule && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
@@ -323,7 +323,7 @@ export const PPMSchedulesList: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {deletingSched && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-rose-600">
               <ShieldAlert className="w-6 h-6 shrink-0" />

@@ -103,21 +103,21 @@ export const Login: React.FC = () => {
 
           {/* Value Highlights Grid */}
           <div className="grid grid-cols-3 gap-3 text-xs">
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+            <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <div className="font-bold text-white flex items-center space-x-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
                 <span>99.8% SLA Assurance</span>
               </div>
               <p className="text-[10px] text-slate-400 mt-0.5">Real-time resolution deadlines</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+            <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <div className="font-bold text-white flex items-center space-x-1.5">
                 <Boxes className="w-3.5 h-3.5 text-teal-400" />
                 <span>QR Asset Registry</span>
               </div>
               <p className="text-[10px] text-slate-400 mt-0.5">Complete equipment lifecycle</p>
             </div>
-            <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-xs">
+            <div className="p-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <div className="font-bold text-white flex items-center space-x-1.5">
                 <CalendarCheck2 className="w-3.5 h-3.5 text-teal-400" />
                 <span>PPM Automation</span>
@@ -155,7 +155,7 @@ export const Login: React.FC = () => {
 
           <button
             onClick={() => setTheme(isDark ? 'light' : 'dark')}
-            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors ml-auto shadow-2xs"
+            className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-colors ml-auto shadow-sm"
             title="Toggle Day/Night Mode"
           >
             {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}

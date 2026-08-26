@@ -44,7 +44,7 @@ export const SystemSettings: React.FC = () => {
           onClick={() => setActiveTab('general')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors ${
             activeTab === 'general'
-              ? 'bg-teal-600 text-white shadow-2xs'
+              ? 'bg-teal-600 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
@@ -54,7 +54,7 @@ export const SystemSettings: React.FC = () => {
           onClick={() => setActiveTab('sla')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors ${
             activeTab === 'sla'
-              ? 'bg-teal-600 text-white shadow-2xs'
+              ? 'bg-teal-600 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
@@ -64,7 +64,7 @@ export const SystemSettings: React.FC = () => {
           onClick={() => setActiveTab('security')}
           className={`px-3.5 py-1.5 rounded-lg transition-colors ${
             activeTab === 'security'
-              ? 'bg-teal-600 text-white shadow-2xs'
+              ? 'bg-teal-600 text-white shadow-sm'
               : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
@@ -72,7 +72,7 @@ export const SystemSettings: React.FC = () => {
         </button>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs space-y-6">
+      <form onSubmit={handleSave} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-6">
         {activeTab === 'general' && (
           <div>
             <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4 flex items-center space-x-2">

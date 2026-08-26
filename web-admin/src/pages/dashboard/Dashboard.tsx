@@ -301,7 +301,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-5 w-full">
       {/* 1. Branded command bar - logo, live status, quick actions */}
-      <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-slate-900 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 border border-slate-800 shadow-lg">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 border border-slate-800 shadow-lg">
         {/* Brand accent wash */}
         <div
           aria-hidden
@@ -309,7 +309,7 @@ export const Dashboard: React.FC = () => {
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-teal-400/50 to-transparent"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"
         />
 
         <div className="relative flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
@@ -350,13 +350,13 @@ export const Dashboard: React.FC = () => {
             </Link>
             <Link
               to="/ppm/plans"
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-xs transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
             >
               Create PPM
             </Link>
             <Link
               to="/reports"
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-xs transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
             >
               Export Reports
             </Link>
@@ -406,7 +406,7 @@ export const Dashboard: React.FC = () => {
       )}
 
       {/* 2. Comprehensive Master Operations Filter Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-sm space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/80">
           <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200">
             <Filter className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
@@ -542,7 +542,7 @@ export const Dashboard: React.FC = () => {
         {/* 1. Open Work Orders */}
         <Link
           to={`/work-orders?status=New${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-blue-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-blue-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -563,7 +563,7 @@ export const Dashboard: React.FC = () => {
         {/* 2. In Progress */}
         <Link
           to={`/work-orders?status=In%20Progress${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-amber-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-amber-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -584,7 +584,7 @@ export const Dashboard: React.FC = () => {
         {/* 3. Completed (Requested by user) */}
         <Link
           to={`/work-orders?status=Completed${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-emerald-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-emerald-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -605,7 +605,7 @@ export const Dashboard: React.FC = () => {
         {/* 4. Closed & Approved (Requested by user) */}
         <Link
           to={`/work-orders?status=Closed${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-teal-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-teal-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -626,7 +626,7 @@ export const Dashboard: React.FC = () => {
         {/* 5. SLA Compliance Rate */}
         <Link
           to="/reports"
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-teal-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-teal-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -648,7 +648,7 @@ export const Dashboard: React.FC = () => {
         {/* 6. PPM Schedules */}
         <Link
           to="/ppm/schedules"
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-indigo-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -669,7 +669,7 @@ export const Dashboard: React.FC = () => {
         {/* 7. Critical Assets */}
         <Link
           to="/assets"
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-2xs hover:border-purple-500 transition-all flex flex-col justify-between group cursor-pointer"
+          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-purple-500 transition-all flex flex-col justify-between group cursor-pointer"
         >
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -689,7 +689,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* 4. "ATTENTION REQUIRED" Exception Panel */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
           <div className="flex items-center space-x-2">
             <span className="p-1 bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 rounded-md">
@@ -810,7 +810,7 @@ export const Dashboard: React.FC = () => {
       {/* 5. Main Visualizations Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Performance Trend Area Chart (2 cols) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl shadow-xs">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
@@ -858,7 +858,7 @@ export const Dashboard: React.FC = () => {
         </div>
 
         {/* Priority Breakdown (1 col) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider mb-1">
               Priority Distribution
@@ -894,7 +894,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* 6. Recent Work Orders Activity Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
             <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
