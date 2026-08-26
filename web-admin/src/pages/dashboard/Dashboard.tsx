@@ -39,6 +39,7 @@ import {
   Area,
 } from 'recharts';
 import { cafmDataService } from '../../api/supabase';
+import { getSlaStatus } from '../../utils/sla';
 import {
   DashboardStats,
   WorkOrder,
@@ -183,9 +184,23 @@ export const Dashboard: React.FC = () => {
 
   const totalClosedOrCompleted = completedCount + closedCount;
   const totalFilteredCount = filteredWorkOrders.length;
-  const dynamicSLA = totalFilteredCount > 0
-    ? Math.round(((totalClosedOrCompleted + inProgressCount) / totalFilteredCount) * 100)
-    : 100;
+
+  /**
+   * SLA compliance = of the jobs actually finished, how many beat their
+   * deadline. The old formula counted in-progress work as compliant and
+   * divided by every work order, which reported a healthy number for a
+   * backlog nobody had touched.
+   */
+  const resolvedWos = filteredWorkOrders.filter((w) =>
+    ['Completed', 'Closed'].includes(w.status)
+  );
+  const metSlaCount = resolvedWos.filter((w) => {
+    const finished = w.closed_at || w.completed_at;
+    if (!w.resolution_due_at || !finished) return !w.is_overdue;
+    return new Date(finished) <= new Date(w.resolution_due_at);
+  }).length;
+  const dynamicSLA =
+    resolvedWos.length > 0 ? Math.round((metSlaCount / resolvedWos.length) * 100) : 0;
 
   const duePPMCount = filteredPPMs.filter((p) => p.status === 'Scheduled' || p.status === 'Pending Approval').length;
   const overduePPMCount = filteredPPMs.filter((p) => p.status === 'Overdue' || p.is_overdue).length;
@@ -257,6 +272,14 @@ export const Dashboard: React.FC = () => {
 
     return months;
   }, [filteredWorkOrders, filteredPPMs]);
+
+  // Open work orders whose resolution deadline has already passed. Measured
+  // from resolution_due_at rather than trusting the stored is_overdue flag,
+  // which only updates when something writes to the row.
+  const breachedCount = useMemo(
+    () => filteredWorkOrders.filter((w) => getSlaStatus(w).state === 'breached').length,
+    [filteredWorkOrders]
+  );
 
   // Nothing entered yet - show setup guidance rather than a grid of zeroes.
   const isSystemEmpty =
@@ -537,155 +560,97 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Executive KPI Metric Strip (Complete with Completed & Closed) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 w-full">
-        {/* 1. Open Work Orders */}
-        <Link
-          to={`/work-orders?status=New${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-blue-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Open
-            </span>
-            <Clock className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-slate-900 dark:text-white">
-              {openCount}
+      {/* 3. KPI strip - four headline figures, then supporting counts.
+             Previously seven equal tiles competed for attention, and two of
+             them ("2.4% Target", "100% QR Mapped") were hard-coded rather
+             than measured. */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {[
+          {
+            label: 'Open',
+            value: openCount,
+            hint: 'New & assigned',
+            to: `/work-orders?status=New${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`,
+            Icon: Clock,
+            accent: 'text-blue-600 dark:text-blue-400',
+            ring: 'hover:border-blue-400 dark:hover:border-blue-600',
+            tint: 'bg-blue-50 dark:bg-blue-950/40',
+          },
+          {
+            label: 'In Progress',
+            value: inProgressCount,
+            hint: 'Active on site',
+            to: '/work-orders?status=In%20Progress',
+            Icon: Activity,
+            accent: 'text-amber-600 dark:text-amber-400',
+            ring: 'hover:border-amber-400 dark:hover:border-amber-600',
+            tint: 'bg-amber-50 dark:bg-amber-950/40',
+          },
+          {
+            label: 'Past SLA',
+            value: breachedCount,
+            hint: breachedCount ? 'Escalate now' : 'None breached',
+            to: '/work-orders',
+            Icon: AlertTriangle,
+            accent: breachedCount
+              ? 'text-rose-600 dark:text-rose-400'
+              : 'text-slate-400 dark:text-slate-500',
+            ring: 'hover:border-rose-400 dark:hover:border-rose-600',
+            tint: breachedCount ? 'bg-rose-50 dark:bg-rose-950/40' : 'bg-slate-100 dark:bg-slate-800',
+          },
+          {
+            label: 'SLA Compliance',
+            value: resolvedWos.length ? `${dynamicSLA}%` : '—',
+            hint: resolvedWos.length
+              ? `${metSlaCount} of ${resolvedWos.length} met target`
+              : 'Nothing resolved yet',
+            to: '/reports',
+            Icon: ShieldCheck,
+            accent: 'text-emerald-600 dark:text-emerald-400',
+            ring: 'hover:border-emerald-400 dark:hover:border-emerald-600',
+            tint: 'bg-emerald-50 dark:bg-emerald-950/40',
+          },
+        ].map(({ label, value, hint, to, Icon, accent, ring, tint }) => (
+          <Link
+            key={label}
+            to={to}
+            className={`group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 ${ring}`}
+          >
+            <div className="flex items-start justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                {label}
+              </span>
+              <span className={`rounded-lg p-1.5 ${tint}`}>
+                <Icon className={`h-3.5 w-3.5 ${accent}`} />
+              </span>
             </div>
-            <div className="flex items-center text-[10px] font-semibold text-blue-600 dark:text-blue-400 mt-0.5">
-              <span>New & Assigned</span>
-            </div>
-          </div>
-        </Link>
+            <p className="mt-3 text-2xl font-bold leading-none text-slate-900 dark:text-white">
+              {value}
+            </p>
+            <p className={`mt-1.5 text-[11px] font-medium ${accent}`}>{hint}</p>
+          </Link>
+        ))}
+      </div>
 
-        {/* 2. In Progress */}
-        <Link
-          to={`/work-orders?status=In%20Progress${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-amber-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              In Progress
-            </span>
-            <Activity className="w-4 h-4 text-amber-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-amber-600 dark:text-amber-400">
-              {inProgressCount}
-            </div>
-            <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
-              Active on-site
-            </div>
-          </div>
-        </Link>
-
-        {/* 3. Completed (Requested by user) */}
-        <Link
-          to={`/work-orders?status=Completed${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-emerald-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Completed
-            </span>
-            <CheckCircle className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400">
-              {completedCount}
-            </div>
-            <div className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 mt-0.5">
-              Work Verified
-            </div>
-          </div>
-        </Link>
-
-        {/* 4. Closed & Approved (Requested by user) */}
-        <Link
-          to={`/work-orders?status=Closed${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`}
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-teal-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Closed
-            </span>
-            <Archive className="w-4 h-4 text-teal-600 dark:text-teal-400 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-teal-700 dark:text-teal-300">
-              {closedCount}
-            </div>
-            <div className="text-[10px] font-medium text-teal-600 dark:text-teal-400 mt-0.5">
-              Admin Signed-Off
-            </div>
-          </div>
-        </Link>
-
-        {/* 5. SLA Compliance Rate */}
-        <Link
-          to="/reports"
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-teal-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              SLA Health
-            </span>
-            <ShieldCheck className="w-4 h-4 text-teal-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-teal-600 dark:text-teal-400">
-              {dynamicSLA}%
-            </div>
-            <div className="flex items-center text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-              <TrendingUp className="w-3 h-3 mr-0.5" />
-              <span>↑ 2.4% Target</span>
-            </div>
-          </div>
-        </Link>
-
-        {/* 6. PPM Schedules */}
-        <Link
-          to="/ppm/schedules"
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-indigo-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              PPM Due
-            </span>
-            <CalendarCheck2 className="w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-indigo-600 dark:text-indigo-400">
-              {duePPMCount}
-            </div>
-            <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
-              {filteredPPMs.length} Total Plans
-            </div>
-          </div>
-        </Link>
-
-        {/* 7. Critical Assets */}
-        <Link
-          to="/assets"
-          className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-3.5 rounded-2xl shadow-sm hover:border-purple-500 transition-all flex flex-col justify-between group cursor-pointer"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Assets
-            </span>
-            <Boxes className="w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="mt-2.5">
-            <div className="text-xl font-extrabold text-purple-600 dark:text-purple-400">
-              {filteredAssets.length}
-            </div>
-            <div className="text-[10px] font-medium text-slate-400 dark:text-slate-500 mt-0.5">
-              100% QR Mapped
-            </div>
-          </div>
-        </Link>
+      {/* Supporting counts - deliberately quieter than the four above */}
+      <div className="grid grid-cols-2 divide-slate-100 rounded-2xl border border-slate-200/80 bg-white shadow-sm sm:grid-cols-4 sm:divide-x dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+        {[
+          { label: 'Completed', value: completedCount, to: '/work-orders?status=Completed' },
+          { label: 'Closed', value: closedCount, to: '/work-orders?status=Closed' },
+          { label: 'PPM Due', value: duePPMCount, to: '/ppm/schedules' },
+          { label: 'Assets', value: filteredAssets.length, to: '/assets' },
+        ].map(({ label, value, to }) => (
+          <Link
+            key={label}
+            to={to}
+            className="px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+          >
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {label}
+            </p>
+            <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{value}</p>
+          </Link>
+        ))}
       </div>
 
       {/* 4. "ATTENTION REQUIRED" Exception Panel */}
