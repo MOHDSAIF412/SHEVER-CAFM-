@@ -28,7 +28,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
-  const { user, role, setRole, isAdmin } = useAuth();
+  const { user, role, isAdmin } = useAuth();
 
   const navigationGroups = [
     {

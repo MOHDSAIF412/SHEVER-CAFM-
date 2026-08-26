@@ -1219,6 +1219,16 @@ export const cafmDataService = {
   async updateUser(id: string, userData: Partial<UserProfile> & { password?: string }): Promise<UserProfile> {
     const { password, ...profileFields } = userData;
 
+    // Normalise the sign-in identifiers exactly as createUser does. Saving an
+    // address with a stray space or capital used to lock the account out: the
+    // login lookup lowercases the stored value but the user types the clean one.
+    if (typeof profileFields.email === 'string') {
+      profileFields.email = profileFields.email.trim().toLowerCase();
+    }
+    if (typeof profileFields.employee_id === 'string') {
+      profileFields.employee_id = profileFields.employee_id.trim();
+    }
+
     const updated = await cloudWrite('Saving user details', () =>
       supabase
         .from('profiles')
