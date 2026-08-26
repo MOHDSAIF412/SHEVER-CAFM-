@@ -206,6 +206,62 @@ export const Dashboard: React.FC = () => {
     setEndDate('');
   };
 
+  /**
+   * Six-month trend built from real records. This used to be hard-coded figures
+   * for Sep-Jan, so the chart showed invented history no matter what was
+   * actually in the system.
+   *
+   * Declared above the loading return below - hooks cannot sit after an early
+   * return or React sees a different hook count between renders.
+   */
+  const monthlyTrendData = useMemo(() => {
+    const months: {
+      month: string;
+      key: string;
+      reactive: number;
+      completed: number;
+      ppm: number;
+    }[] = [];
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        month: d.toLocaleDateString('en-US', { month: 'short' }),
+        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        reactive: 0,
+        completed: 0,
+        ppm: 0,
+      });
+    }
+
+    const bucketOf = (iso?: string) => {
+      if (!iso) return undefined;
+      return months.find((m) => m.key === iso.slice(0, 7));
+    };
+
+    filteredWorkOrders.forEach((wo) => {
+      const raised = bucketOf(wo.created_at);
+      if (raised) raised.reactive += 1;
+
+      if (['Completed', 'Closed'].includes(wo.status)) {
+        const done = bucketOf(wo.closed_at || wo.completed_at);
+        if (done) done.completed += 1;
+      }
+    });
+
+    filteredPPMs.forEach((ppm) => {
+      const bucket = bucketOf(ppm.due_date);
+      if (bucket) bucket.ppm += 1;
+    });
+
+    return months;
+  }, [filteredWorkOrders, filteredPPMs]);
+
+  // Nothing entered yet - show setup guidance rather than a grid of zeroes.
+  const isSystemEmpty =
+    !loading && buildings.length === 0 && assets.length === 0 && workOrders.length === 0;
+
   if (loading || !stats) {
     return (
       <div className="space-y-4 animate-pulse">
@@ -227,15 +283,6 @@ export const Dashboard: React.FC = () => {
   const overduePPMItems = filteredPPMs.filter((p) => p.status === 'Overdue' || p.is_overdue);
   const totalAttentionCount = emergencyWos.length + overduePPMItems.length + pendingApprovalWos.length;
 
-  // Monthly trend mock data based on volume
-  const monthlyTrendData = [
-    { month: 'Sep', reactive: 45, completed: 42, ppm: 30 },
-    { month: 'Oct', reactive: 52, completed: 49, ppm: 32 },
-    { month: 'Nov', reactive: 58, completed: 55, ppm: 35 },
-    { month: 'Dec', reactive: 48, completed: 47, ppm: 31 },
-    { month: 'Jan', reactive: 64, completed: 60, ppm: 40 },
-    { month: 'Feb', reactive: Math.max(12, totalFilteredCount * 4), completed: Math.max(10, totalClosedOrCompleted * 4), ppm: 38 },
-  ];
 
   const priorityData = [
     { name: 'Emergency', count: filteredWorkOrders.filter((w) => w.priority === 'Emergency').length, fill: '#EF4444' },
@@ -253,45 +300,110 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-5 w-full">
-      {/* 1. Header with Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full pb-1">
-        <div className="flex items-center space-x-2.5">
-          <div className="p-2 bg-teal-500/10 dark:bg-teal-500/20 text-teal-600 dark:text-teal-400 rounded-xl">
-            <Activity className="w-4 h-4" />
-          </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-              Facilities Operations Dashboard
-            </h1>
-            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-              Live CAFM command center • {todayStr}
-            </span>
-          </div>
-        </div>
+      {/* 1. Branded command bar - logo, live status, quick actions */}
+      <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-slate-900 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 border border-slate-800 shadow-lg">
+        {/* Brand accent wash */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-teal-500/15 blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-teal-400/50 to-transparent"
+        />
 
-        {/* Quick Links */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            to="/work-orders/new"
-            className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-2xs transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Work Order</span>
-          </Link>
-          <Link
-            to="/ppm/plans"
-            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs shadow-2xs transition-colors"
-          >
-            Create PPM
-          </Link>
-          <Link
-            to="/reports"
-            className="px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl text-xs shadow-2xs transition-colors"
-          >
-            Export Reports
-          </Link>
+        <div className="relative flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
+          {/* Logo + title */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <img
+              src="/shever-logo.png"
+              alt="Shever Technical Services"
+              className="h-12 w-12 shrink-0 rounded-xl object-contain ring-1 ring-white/15 shadow-md"
+            />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-lg font-bold leading-tight text-white">
+                  Facilities Operations
+                </h1>
+                <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-teal-400/30 bg-teal-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-300">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-teal-400" />
+                  </span>
+                  Live
+                </span>
+              </div>
+              <p className="truncate text-[11px] font-medium text-slate-400">
+                Shever Technical Services · CAFM Command Centre · {todayStr}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              to="/work-orders/new"
+              className="flex items-center gap-1.5 rounded-xl bg-teal-500 px-3.5 py-2 text-xs font-bold text-white shadow-lg shadow-teal-500/20 transition-colors hover:bg-teal-400"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>New Work Order</span>
+            </Link>
+            <Link
+              to="/ppm/plans"
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-xs transition-colors hover:bg-white/10 hover:text-white"
+            >
+              Create PPM
+            </Link>
+            <Link
+              to="/reports"
+              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-xs transition-colors hover:bg-white/10 hover:text-white"
+            >
+              Export Reports
+            </Link>
+          </div>
         </div>
       </div>
+
+      {/* 1b. First-run guidance - the cloud is empty until master data is added */}
+      {isSystemEmpty && (
+        <div className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4 dark:border-teal-900 dark:bg-teal-950/30">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-teal-500/15 p-2 text-teal-600 dark:text-teal-400">
+              <Building2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                Let&rsquo;s set up your portfolio
+              </h3>
+              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
+                Nothing has been added yet. Create your buildings and their floors and
+                locations first &mdash; assets and work orders attach to them. Everything you
+                add is stored in the cloud and visible to your whole team.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  to="/facilities/buildings"
+                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-teal-500"
+                >
+                  1. Add a building
+                </Link>
+                <Link
+                  to="/assets"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  2. Register assets
+                </Link>
+                <Link
+                  to="/work-orders/new"
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  3. Raise a work order
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Comprehensive Master Operations Filter Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-xs space-y-3">

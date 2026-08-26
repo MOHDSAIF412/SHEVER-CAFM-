@@ -82,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
       <div className="flex items-center justify-between h-14 px-3.5 border-b border-slate-800/80 bg-slate-950/40">
         <NavLink to="/" className="flex items-center space-x-2.5 overflow-hidden">
           <img
-            src="/shever-logo-Cg3sbF_E.png"
+            src="/shever-logo.png"
             alt="Shever"
             className="w-7 h-7 rounded-md object-contain shrink-0 bg-white/5 p-0.5 border border-white/10"
             onError={(e) => {
