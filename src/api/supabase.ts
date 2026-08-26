@@ -696,10 +696,32 @@ const toRow = <T extends Record<string, any>>(obj: T): Record<string, any> => {
   return row;
 };
 
+/** Host only — safe to show on screen, unlike the full URL with its key. */
+export const supabaseHost = (() => {
+  try {
+    return new URL(supabaseUrl).host;
+  } catch {
+    return supabaseUrl;
+  }
+})();
+
 const describe = (err: any): string => {
   if (!err) return 'Unknown database error';
+  const msg = err.message || err.details || String(err);
+
+  // "Failed to fetch" means the request never reached the server, so there is
+  // no database error to report — the address itself is unreachable. Naming the
+  // host turns an opaque TypeError into something actionable.
+  if (/failed to fetch|networkerror|load failed|err_name_not_resolved/i.test(msg)) {
+    return (
+      `cannot reach ${supabaseHost}. Check that the project is not paused in ` +
+      `Supabase (free projects pause after inactivity), that VITE_SUPABASE_URL ` +
+      `is spelled correctly, and that no ad blocker is blocking the request.`
+    );
+  }
+
   if (err.message && err.hint) return `${err.message} (${err.hint})`;
-  return err.message || err.details || String(err);
+  return msg;
 };
 
 /**
