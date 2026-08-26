@@ -48,6 +48,7 @@ import {
   Asset,
   Building,
   Category,
+  SLAConfig,
 } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -62,6 +63,7 @@ export const Dashboard: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [slaConfigs, setSlaConfigs] = useState<SLAConfig[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Master Filter States
@@ -76,13 +78,14 @@ export const Dashboard: React.FC = () => {
     let mounted = true;
     const load = async () => {
       try {
-        const [s, w, p, a, b, c] = await Promise.allSettled([
+        const [s, w, p, a, b, c, sla] = await Promise.allSettled([
           cafmDataService.getDashboardStats(),
           cafmDataService.getWorkOrders(),
           cafmDataService.getPPMSchedules(),
           cafmDataService.getAssets(),
           cafmDataService.getBuildings(),
           cafmDataService.getCategories(),
+          cafmDataService.getSlaConfigs(),
         ]);
         if (!mounted) return;
         if (s.status === 'fulfilled') setStats(s.value);
@@ -91,6 +94,7 @@ export const Dashboard: React.FC = () => {
         if (a.status === 'fulfilled') setAssets(a.value);
         if (b.status === 'fulfilled') setBuildings(b.value);
         if (c.status === 'fulfilled') setCategories(c.value);
+        if (sla.status === 'fulfilled') setSlaConfigs(sla.value);
       } catch (err) {
         console.warn('Dashboard load error handled:', err);
       } finally {
@@ -273,6 +277,18 @@ export const Dashboard: React.FC = () => {
 
     return months;
   }, [filteredWorkOrders, filteredPPMs]);
+
+  /**
+   * Real response targets, shown as a range. The panel used to state
+   * "< 120 mins avg", a fixed string matching none of the configured values.
+   */
+  const slaTargetSummary = useMemo(() => {
+    const mins = slaConfigs.map((c) => c.response_time_minutes).filter((n) => Number.isFinite(n));
+    if (mins.length === 0) return 'Not configured';
+    const lo = Math.min(...mins);
+    const hi = Math.max(...mins);
+    return lo === hi ? `${lo} mins` : `${lo}–${hi} mins by priority`;
+  }, [slaConfigs]);
 
   // Open work orders whose resolution deadline has already passed. Measured
   // from resolution_due_at rather than trusting the stored is_overdue flag,
@@ -535,6 +551,8 @@ export const Dashboard: React.FC = () => {
             accent: 'text-blue-600 dark:text-blue-400',
             ring: 'hover:border-blue-400 dark:hover:border-blue-600',
             tint: 'bg-blue-50 dark:bg-blue-950/40',
+            bar: 'bg-blue-500',
+            wash: 'bg-gradient-to-b from-blue-50/70 to-transparent dark:from-blue-950/20',
           },
           {
             label: 'In Progress',
@@ -545,6 +563,8 @@ export const Dashboard: React.FC = () => {
             accent: 'text-amber-600 dark:text-amber-400',
             ring: 'hover:border-amber-400 dark:hover:border-amber-600',
             tint: 'bg-amber-50 dark:bg-amber-950/40',
+            bar: 'bg-amber-500',
+            wash: 'bg-gradient-to-b from-amber-50/70 to-transparent dark:from-amber-950/20',
           },
           {
             label: 'Past SLA',
@@ -557,6 +577,10 @@ export const Dashboard: React.FC = () => {
               : 'text-slate-400 dark:text-slate-500',
             ring: 'hover:border-rose-400 dark:hover:border-rose-600',
             tint: breachedCount ? 'bg-rose-50 dark:bg-rose-950/40' : 'bg-slate-100 dark:bg-slate-800',
+            bar: breachedCount ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-700',
+            wash: breachedCount
+              ? 'bg-gradient-to-b from-rose-50/70 to-transparent dark:from-rose-950/20'
+              : '',
           },
           {
             label: 'SLA Compliance',
@@ -569,25 +593,36 @@ export const Dashboard: React.FC = () => {
             accent: 'text-emerald-600 dark:text-emerald-400',
             ring: 'hover:border-emerald-400 dark:hover:border-emerald-600',
             tint: 'bg-emerald-50 dark:bg-emerald-950/40',
+            bar: 'bg-emerald-500',
+            wash: 'bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/20',
           },
-        ].map(({ label, value, hint, to, Icon, accent, ring, tint }) => (
+        ].map(({ label, value, hint, to, Icon, accent, ring, tint, bar, wash }) => (
           <Link
             key={label}
             to={to}
-            className={`group rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900 ${ring}`}
+            className={`group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${ring}`}
           >
-            <div className="flex items-start justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                {label}
-              </span>
-              <span className={`rounded-lg p-1.5 ${tint}`}>
-                <Icon className={`h-3.5 w-3.5 ${accent}`} />
-              </span>
+            {/* Accent rule along the top, so each figure reads at a glance */}
+            <span className={`absolute inset-x-0 top-0 h-1 ${bar}`} />
+            {/* Very light wash of the same hue - colour without shouting */}
+            <span className={`pointer-events-none absolute inset-0 ${wash}`} />
+
+            <div className="relative p-4 pt-4.5">
+              <div className="flex items-start justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {label}
+                </span>
+                <span className={`rounded-lg p-1.5 ${tint}`}>
+                  <Icon className={`h-3.5 w-3.5 ${accent}`} />
+                </span>
+              </div>
+              <p className={`mt-3 text-3xl font-bold leading-none tracking-tight ${accent}`}>
+                {value}
+              </p>
+              <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {hint}
+              </p>
             </div>
-            <p className="mt-3 text-2xl font-bold leading-none text-slate-900 dark:text-white">
-              {value}
-            </p>
-            <p className={`mt-1.5 text-[11px] font-medium ${accent}`}>{hint}</p>
           </Link>
         ))}
       </div>
@@ -595,17 +630,18 @@ export const Dashboard: React.FC = () => {
       {/* Supporting counts - deliberately quieter than the four above */}
       <div className="grid grid-cols-2 divide-slate-100 rounded-2xl border border-slate-200/80 bg-white shadow-sm sm:grid-cols-4 sm:divide-x dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
         {[
-          { label: 'Completed', value: completedCount, to: '/work-orders?status=Completed' },
-          { label: 'Closed', value: closedCount, to: '/work-orders?status=Closed' },
-          { label: 'PPM Due', value: duePPMCount, to: '/ppm/schedules' },
-          { label: 'Assets', value: filteredAssets.length, to: '/assets' },
-        ].map(({ label, value, to }) => (
-          <Link
-            key={label}
-            to={to}
-            className="px-4 py-3.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-          >
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          { label: 'Completed', value: completedCount, to: '/work-orders?status=Completed',
+            dot: 'bg-teal-500', hover: 'hover:bg-teal-50/60 dark:hover:bg-teal-950/20' },
+          { label: 'Closed', value: closedCount, to: '/work-orders?status=Closed',
+            dot: 'bg-slate-400', hover: 'hover:bg-slate-50 dark:hover:bg-slate-800/50' },
+          { label: 'PPM Due', value: duePPMCount, to: '/ppm/schedules',
+            dot: 'bg-violet-500', hover: 'hover:bg-violet-50/60 dark:hover:bg-violet-950/20' },
+          { label: 'Assets', value: filteredAssets.length, to: '/assets',
+            dot: 'bg-sky-500', hover: 'hover:bg-sky-50/60 dark:hover:bg-sky-950/20' },
+        ].map(({ label, value, to, dot, hover }) => (
+          <Link key={label} to={to} className={`px-4 py-3.5 transition-colors ${hover}`}>
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
               {label}
             </p>
             <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{value}</p>
@@ -820,8 +856,12 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            <span>SLA Response Target</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">&lt; 120 mins avg</span>
+            {/* This read "< 120 mins avg", which was hard-coded and matched
+                none of the configured targets. Shows the real range now. */}
+            <span>Response targets</span>
+            <span className="font-bold text-slate-800 dark:text-slate-200">
+              {slaTargetSummary}
+            </span>
           </div>
         </div>
       </div>
