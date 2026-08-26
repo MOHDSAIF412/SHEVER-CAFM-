@@ -103,7 +103,11 @@ export const UsersList: React.FC = () => {
   const handleEditClick = (u: UserProfile) => {
     setEditingUser(u);
     setFullName(u.full_name);
-    setEmployeeId(u.employee_id || `EMP-${u.id.slice(-3)}`);
+    // Show the real employee id or nothing. This used to invent one from the
+    // last three characters of the row id, which then got saved on submit -
+    // a made-up identifier the person could try to sign in with, and one that
+    // can collide with someone else's on the UNIQUE constraint.
+    setEmployeeId(u.employee_id || '');
     setEmail(u.email);
     setPassword('');
     setRoleId(u.role_id);

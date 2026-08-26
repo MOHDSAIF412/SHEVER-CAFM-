@@ -9,7 +9,6 @@ interface AuthContextType {
   error: string | null;
   login: (identifier: string, password?: string) => Promise<boolean>;
   logout: () => void;
-  setRole: (role: UserRole) => void;
   isAdmin: boolean;
   isManager: boolean;
   isSupervisor: boolean;
@@ -133,12 +132,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const setRole = (newRole: UserRole) => {
-    if (!user) return;
-    const updated = { ...user, role_id: newRole };
-    setUser(updated);
-    localStorage.setItem('shever_auth_user', JSON.stringify(updated));
-  };
+  /**
+   * setRole used to live here. It rewrote role_id in state and localStorage,
+   * so anyone signed in could pick "Admin" from a dropdown and gain delete
+   * rights - every permission below is derived from this value. Roles now come
+   * from the profile row and are changed only on the Users screen.
+   */
 
   const logout = () => {
     setUser(null);
@@ -169,7 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         error,
         login,
         logout,
-        setRole,
         isAdmin,
         isManager,
         isSupervisor,

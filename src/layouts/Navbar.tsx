@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
+import { cafmDataService } from '../api/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { UserRole } from '../types';
@@ -28,7 +29,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
   const navigate = useNavigate();
-  const { user, role, setRole, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
 
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -39,21 +40,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
   // Profile and credential states
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [myName, setMyName] = useState(user?.full_name || 'Admin');
-  const [myId, setMyId] = useState(user?.employee_id || `EMP-101`);
+  const [myId, setMyId] = useState(user?.employee_id || '');
   const [myEmail, setMyEmail] = useState(user?.email || 'admin@shever.com');
   const [myPassword, setMyPassword] = useState('');
   const [myConfirmPassword, setMyConfirmPassword] = useState('');
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
     if (user) {
       setMyName(user.full_name);
-      setMyId(user.employee_id || `EMP-101`);
+      setMyId(user.employee_id || '');
       setMyEmail(user.email);
     }
   }, [user]);
 
+  /**
+   * Saves your own profile.
+   *
+   * This used to write the new name, email and password to localStorage and
+   * nothing else, then report success. The database kept the old values, so
+   * signing in anywhere - another browser, a phone, or here after clearing the
+   * session - still needed the OLD email and password, and the new ones simply
+   * did not work. It now goes through the data service like every other write.
+   */
   const handleUpdateMyProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileError('');
@@ -66,21 +77,32 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
       setProfileError('Passwords do not match.');
       return;
     }
+    if (!user) return;
 
-    if (user) {
-      const updatedUser = {
-        ...user,
-        full_name: myName,
-        employee_id: myId,
-        email: myEmail,
+    setProfileSaving(true);
+    try {
+      await cafmDataService.updateUser(user.id, {
+        full_name: myName.trim(),
+        employee_id: myId.trim() || undefined,
+        email: myEmail.trim().toLowerCase(),
         ...(myPassword ? { password: myPassword } : {}),
-      };
-      localStorage.setItem('shever_auth_user', JSON.stringify(updatedUser));
+      });
+
+      setMyPassword('');
+      setMyConfirmPassword('');
       setProfileSuccess(true);
       setTimeout(() => {
         setProfileSuccess(false);
         setShowProfileModal(false);
-      }, 1500);
+        // Re-read the session so the header reflects what was actually saved.
+        window.location.reload();
+      }, 1200);
+    } catch (err: any) {
+      setProfileError(
+        err?.message || 'Could not save your profile to the database. Nothing was changed.'
+      );
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -259,19 +281,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
           )}
         </div>
 
-        {/* Role Switcher Preset (Enterprise Demo Support) */}
+        {/* A role switcher used to sit here. It let anyone signed in pick
+            "Admin" and immediately gain delete rights, because every
+            permission check reads that value. Your role now comes from your
+            profile and cannot be changed from the interface. */}
         <div className="hidden md:flex items-center pl-2 border-l border-slate-200 dark:border-slate-800">
-          <select
-            value={role || 'admin'}
-            onChange={(e) => setRole(e.target.value as UserRole)}
-            className="text-xs font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-md border border-slate-200 dark:border-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-500 cursor-pointer"
-            title="Switch User Role Persona"
+          <span
+            className="rounded-md border border-slate-200 bg-slate-100 px-2 py-1 text-xs font-bold text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            title="Your role is set by an administrator on the Users screen"
           >
-            <option value="admin">Admin</option>
-            <option value="fm_manager">FM Manager</option>
-            <option value="supervisor">Supervisor</option>
-            <option value="technician">Technician</option>
-          </select>
+            {(role || '').replace('_', ' ').toUpperCase() || 'USER'}
+          </span>
         </div>
 
         {/* Profile Menu */}
@@ -430,9 +450,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold rounded-xl text-xs shadow transition-colors"
+                    disabled={profileSaving}
+                    className="px-5 py-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-60 text-white font-bold rounded-xl text-xs shadow transition-colors"
                   >
-                    Save Changes
+                    {profileSaving ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
               </form>
