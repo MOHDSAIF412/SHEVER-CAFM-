@@ -211,14 +211,14 @@ export const WorkOrdersList: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => exportWorkOrdersToExcel(filteredWos)}
-            className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-2xs transition-colors"
+            className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
             <span>Export Excel</span>
           </button>
           <Link
             to="/work-orders/new"
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-2xs transition-colors"
+            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
           >
             <Plus className="w-4 h-4" />
             <span>Create Work Order</span>
@@ -227,7 +227,7 @@ export const WorkOrdersList: React.FC = () => {
       </div>
 
       {/* Multi-Parameter Filter Toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
         <div className="flex flex-col md:flex-row gap-3">
           {/* Search */}
           <div className="relative flex-1">
@@ -310,13 +310,13 @@ export const WorkOrdersList: React.FC = () => {
             <div className="flex items-center space-x-2 flex-wrap">
               <button
                 onClick={() => handleBulkStatusChange('In Progress')}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-2xs"
+                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm"
               >
                 Mark In Progress
               </button>
               <button
                 onClick={() => handleBulkStatusChange('Completed')}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-2xs"
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-sm"
               >
                 Mark Completed
               </button>
@@ -324,7 +324,7 @@ export const WorkOrdersList: React.FC = () => {
               {isAdmin && (
                 <button
                   onClick={() => handleBulkStatusChange('Closed')}
-                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-2xs flex items-center space-x-1 border border-teal-500/40"
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-sm flex items-center space-x-1 border border-teal-500/40"
                 >
                   <Check className="w-3.5 h-3.5 text-teal-400" />
                   <span>Bulk Close (Admin)</span>
@@ -334,7 +334,7 @@ export const WorkOrdersList: React.FC = () => {
               {isAdmin && (
                 <button
                   onClick={() => setShowBulkDeleteConfirm(true)}
-                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shadow-2xs flex items-center space-x-1"
+                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shadow-sm flex items-center space-x-1"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Bulk Delete (Admin)</span>
@@ -352,7 +352,7 @@ export const WorkOrdersList: React.FC = () => {
       </div>
 
       {/* Main DataTable */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200/80 dark:border-slate-800">
@@ -512,7 +512,7 @@ export const WorkOrdersList: React.FC = () => {
 
       {/* Single Delete Confirmation Modal */}
       {deletingWo && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-rose-600">
               <ShieldAlert className="w-6 h-6 shrink-0" />
@@ -545,7 +545,7 @@ export const WorkOrdersList: React.FC = () => {
 
       {/* Bulk Delete Confirmation Modal */}
       {showBulkDeleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-rose-600">
               <ShieldAlert className="w-6 h-6 shrink-0" />

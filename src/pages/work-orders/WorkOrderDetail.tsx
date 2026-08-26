@@ -315,7 +315,7 @@ export const WorkOrderDetail: React.FC = () => {
         {/* Left 2 Cols: Details, Actions, Photos, Materials */}
         <div className="lg:col-span-2 space-y-6">
           {/* Problem Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Problem Description
@@ -724,7 +724,7 @@ export const WorkOrderDetail: React.FC = () => {
 
       {/* Edit Reporter Modal */}
       {showEditReporterModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
@@ -784,7 +784,7 @@ export const WorkOrderDetail: React.FC = () => {
 
       {/* Delete Work Order Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center space-x-3 text-rose-600">
               <ShieldAlert className="w-6 h-6 shrink-0" />

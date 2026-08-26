@@ -126,14 +126,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
             <Search className="w-3.5 h-3.5 text-slate-400" />
             <span>Search or jump to...</span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
             Ctrl K
           </kbd>
         </button>
       </div>
 
       {/* Center: Shifted Facilities Command Greeting & Status */}
-      <div className="hidden md:flex items-center space-x-3 text-xs bg-slate-50 dark:bg-slate-800/60 py-1.5 px-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/50 shadow-2xs">
+      <div className="hidden md:flex items-center space-x-3 text-xs bg-slate-50 dark:bg-slate-800/60 py-1.5 px-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm">
         <div className="flex items-center space-x-1.5 font-bold text-slate-800 dark:text-slate-100">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>Good Day, {user?.full_name?.replace(/\s*\([^)]*\)/g, '') || 'Saif Al-Nuaimi'}</span>
@@ -153,7 +153,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
         <div className="relative" ref={quickCreateRef}>
           <button
             onClick={() => setShowQuickCreate(!showQuickCreate)}
-            className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition-colors"
+            className="px-2.5 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Create</span>
@@ -331,7 +331,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
 
       {/* My Profile & Password Modal */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center space-x-2">
