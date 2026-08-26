@@ -15,7 +15,8 @@ import {
   AuditLog,
   SystemSettings,
   PPMChecklist,
-  PPMChecklistItem
+  PPMChecklistItem,
+  SLAConfig
 } from '../types';
 
 /** Supabase Storage bucket holding work-order before/after photos. */
@@ -1150,6 +1151,16 @@ export const cafmDataService = {
     const cloud = await cloudRead<Material>('materials', (q) => q, 'shever_materials');
     if (cloud) memoryMaterials = cloud;
     return cloud || (memoryMaterials.length > 0 ? memoryMaterials : SEED_MATERIALS);
+  },
+
+  /** Response and resolution targets per priority, straight from the table. */
+  async getSlaConfigs(): Promise<SLAConfig[]> {
+    const cloud = await cloudRead<SLAConfig>(
+      'sla_configs',
+      (q) => q.order('response_time_minutes'),
+      'shever_sla_configs'
+    );
+    return cloud || [];
   },
 
   async getSystemSettings(): Promise<SystemSettings> {
