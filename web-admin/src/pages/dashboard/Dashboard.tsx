@@ -26,6 +26,7 @@ import {
   Wrench,
   CheckCircle,
   Archive,
+  ChevronDown,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -428,136 +429,95 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Comprehensive Master Operations Filter Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-3.5 shadow-sm space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100 dark:border-slate-800/80">
-          <div className="flex items-center space-x-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-            <Filter className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
-            <span>Operational Filters</span>
-            {activeFiltersCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
-                {activeFiltersCount} Active
-              </span>
-            )}
-          </div>
+      {/* 2. Filters - one compact row.
+             This was a full-width card with a heading, a divider, labelled
+             columns and its own reset row: a lot of vertical space for four
+             dropdowns that are rarely touched. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/70 bg-white/70 p-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/70">
+        <Filter className="ml-1 h-3.5 w-3.5 shrink-0 text-slate-400" />
 
-          {activeFiltersCount > 0 && (
-            <button
-              onClick={handleResetFilters}
-              className="text-xs text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 font-semibold flex items-center space-x-1 transition-colors"
+        {[
+          {
+            value: selectedBuilding,
+            onChange: setSelectedBuilding,
+            all: 'All buildings',
+            options: buildings.map((b) => ({ id: b.id, label: b.name })),
+          },
+          {
+            value: selectedCategory,
+            onChange: setSelectedCategory,
+            all: 'All trades',
+            options: categories.map((c) => ({ id: c.id, label: c.name })),
+          },
+          {
+            value: selectedPriority,
+            onChange: setSelectedPriority,
+            all: 'All priorities',
+            options: ['Emergency', 'High', 'Medium', 'Low'].map((p) => ({ id: p, label: p })),
+          },
+          {
+            value: datePreset,
+            onChange: setDatePreset,
+            all: 'All time',
+            options: [
+              { id: 'TODAY', label: 'Today' },
+              { id: 'THIS_WEEK', label: 'Last 7 days' },
+              { id: 'THIS_MONTH', label: 'Last 30 days' },
+            ],
+          },
+        ].map((f, i) => {
+          const active = f.value !== 'ALL';
+          return (
+            /* The highlight lives on this wrapper, not the <select>. A native
+               select is painted by the browser, so border and background
+               utilities on the element itself do not reliably take effect. */
+            <div
+              key={i}
+              className={`relative min-w-0 flex-1 rounded-lg border transition-colors sm:flex-none ${
+                active
+                  ? 'border-teal-400 bg-teal-50 dark:border-teal-600 dark:bg-teal-950/40'
+                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950'
+              }`}
             >
-              <RotateCcw className="w-3 h-3" />
-              <span>Reset Filters</span>
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2.5 text-xs">
-          {/* Building Filter */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 flex items-center space-x-1">
-              <Building2 className="w-3 h-3" />
-              <span>Building / Property</span>
-            </label>
-            <select
-              value={selectedBuilding}
-              onChange={(e) => setSelectedBuilding(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:ring-1 focus:ring-teal-500 focus:outline-none"
-            >
-              <option value="ALL">All Buildings</option>
-              {buildings.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Department / Category Filter */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 flex items-center space-x-1">
-              <Wrench className="w-3 h-3" />
-              <span>Department / Trade</span>
-            </label>
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:ring-1 focus:ring-teal-500 focus:outline-none"
-            >
-              <option value="ALL">All Departments</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Priority Filter */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 flex items-center space-x-1">
-              <Flame className="w-3 h-3" />
-              <span>Priority Level</span>
-            </label>
-            <select
-              value={selectedPriority}
-              onChange={(e) => setSelectedPriority(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:ring-1 focus:ring-teal-500 focus:outline-none"
-            >
-              <option value="ALL">All Priorities</option>
-              <option value="Emergency">Emergency</option>
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-
-          {/* Date Range Preset */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1 flex items-center space-x-1">
-              <Calendar className="w-3 h-3" />
-              <span>Date Range</span>
-            </label>
-            <select
-              value={datePreset}
-              onChange={(e) => setDatePreset(e.target.value)}
-              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 font-medium focus:ring-1 focus:ring-teal-500 focus:outline-none"
-            >
-              <option value="ALL">All Time</option>
-              <option value="TODAY">Today</option>
-              <option value="THIS_WEEK">This Week (Last 7 Days)</option>
-              <option value="THIS_MONTH">This Month (Last 30 Days)</option>
-              <option value="CUSTOM">Custom Date Range...</option>
-            </select>
-          </div>
-
-          {/* Custom Date Inputs if CUSTOM selected */}
-          {datePreset === 'CUSTOM' ? (
-            <div className="flex items-center space-x-1.5">
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-1/2 px-2 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-900 dark:text-slate-100 focus:outline-none"
-                title="Start Date"
-              />
-              <span className="text-slate-400 text-xs">-</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-1/2 px-2 py-1.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-900 dark:text-slate-100 focus:outline-none"
-                title="End Date"
+              <select
+                value={f.value}
+                onChange={(e) => f.onChange(e.target.value)}
+                aria-label={f.all}
+                className={`w-full cursor-pointer appearance-none bg-transparent py-1.5 pl-2.5 pr-7 text-xs font-medium focus:outline-none ${
+                  active
+                    ? 'text-teal-800 dark:text-teal-300'
+                    : 'text-slate-600 dark:text-slate-400'
+                }`}
+              >
+                <option value="ALL">{f.all}</option>
+                {f.options.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className={`pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 ${
+                  active ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'
+                }`}
               />
             </div>
-          ) : (
-            <div className="flex items-center justify-end pt-4">
-              <span className="text-[11px] text-slate-400 font-semibold">
-                Showing {filteredWorkOrders.length} work orders
-              </span>
-            </div>
-          )}
-        </div>
+          );
+        })}
+
+        {activeFiltersCount > 0 && (
+          <button
+            onClick={handleResetFilters}
+            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Clear
+          </button>
+        )}
+
+        <span className="ml-auto pr-1 text-[11px] font-medium text-slate-400">
+          {totalFilteredCount} work order{totalFilteredCount === 1 ? '' : 's'}
+        </span>
       </div>
 
       {/* 3. KPI strip - four headline figures, then supporting counts.
@@ -653,33 +613,40 @@ export const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* 4. "ATTENTION REQUIRED" Exception Panel */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
-          <div className="flex items-center space-x-2">
-            <span className="p-1 bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 rounded-md">
-              <AlertTriangle className="w-4 h-4" />
+      {/* 4. Exceptions needing a supervisor.
+             When there is nothing wrong this used to render a full card with a
+             heading, a divider and a large centred tick - roughly 200px to say
+             "no news". It now collapses to a single line. */}
+      {totalAttentionCount === 0 ? (
+        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/70 bg-emerald-50/60 px-4 py-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+          <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+            Nothing needs attention &mdash; no emergencies, SLA breaches or overdue PPM.
+          </p>
+        </div>
+      ) : (
+      <div className="overflow-hidden rounded-2xl border border-rose-200/70 bg-white shadow-sm dark:border-rose-900/40 dark:bg-slate-900">
+        <div className="flex items-center justify-between gap-3 border-b border-rose-100 bg-rose-50/60 px-4 py-3 dark:border-rose-900/40 dark:bg-rose-950/20">
+          <div className="flex items-center gap-2.5">
+            <span className="rounded-lg bg-rose-100 p-1.5 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
+              <AlertTriangle className="h-4 w-4" />
             </span>
             <div>
-              <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                Priority Attention Panel
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+                Needs Attention
               </h3>
-              <p className="text-[11px] text-slate-400">
-                Operational exceptions requiring immediate supervisor or manager intervention
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Exceptions requiring a supervisor or manager
               </p>
             </div>
           </div>
-          <span className="px-2 py-0.5 bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-md text-[10px] font-bold">
-            {totalAttentionCount} Action Items
+          <span className="shrink-0 rounded-full bg-rose-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+            {totalAttentionCount}
           </span>
         </div>
 
-        {totalAttentionCount === 0 ? (
-          <div className="py-6 text-center text-xs text-slate-400 flex flex-col items-center">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
-            <span>All systems nominal for selected criteria. No emergency breaches or overdue items.</span>
-          </div>
-        ) : (
+        <div className="p-4">
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Emergency Work Orders */}
             {emergencyWos.map((w) => (
@@ -769,8 +736,9 @@ export const Dashboard: React.FC = () => {
               </Link>
             ))}
           </div>
-        )}
+        </div>
       </div>
+      )}
 
       {/* 5. Main Visualizations Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

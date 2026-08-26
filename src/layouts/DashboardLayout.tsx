@@ -8,6 +8,7 @@ import { CloudSyncBanner } from '../components/CloudSyncBanner';
 export const DashboardLayout: React.FC = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -23,11 +24,19 @@ export const DashboardLayout: React.FC = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
       {/* Sidebar */}
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <Sidebar
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+        mobileOpen={mobileNavOpen}
+        closeMobile={() => setMobileNavOpen(false)}
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <Navbar onOpenCommandPalette={() => setCommandPaletteOpen(true)} />
+        <Navbar
+          onOpenCommandPalette={() => setCommandPaletteOpen(true)}
+          onOpenMenu={() => setMobileNavOpen(true)}
+        />
 
         <CloudSyncBanner />
 
