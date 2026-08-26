@@ -38,6 +38,9 @@ import {
   Legend,
   AreaChart,
   Area,
+  RadialBarChart,
+  RadialBar,
+  PolarAngleAxis,
 } from 'recharts';
 import { cafmDataService } from '../../api/supabase';
 import { getSlaStatus } from '../../utils/sla';
@@ -536,115 +539,184 @@ export const Dashboard: React.FC = () => {
         </span>
       </div>
 
-      {/* 3. KPI strip - four headline figures, then supporting counts.
-             Previously seven equal tiles competed for attention, and two of
-             them ("2.4% Target", "100% QR Mapped") were hard-coded rather
-             than measured. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* 3. Metrics bento.
+             Previously four equal tiles above four more equal tiles - eight
+             identical rectangles in a row, with nothing to look at first.
+             Varying the sizes gives the eye somewhere to land. */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-6">
+
+        {/* ---- Workload: the headline panel ------------------------------ */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-3 dark:border-slate-800 dark:bg-slate-900">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-teal-500/10 blur-2xl"
+          />
+          <div className="relative">
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Live workload
+              </h3>
+              <Link
+                to="/work-orders"
+                className="text-[11px] font-semibold text-teal-600 hover:underline dark:text-teal-400"
+              >
+                View all
+              </Link>
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
+              {[
+                { n: openCount, label: 'Open', tone: 'text-blue-600 dark:text-blue-400' },
+                { n: inProgressCount, label: 'In progress', tone: 'text-amber-600 dark:text-amber-400' },
+                { n: totalClosedOrCompleted, label: 'Resolved', tone: 'text-teal-600 dark:text-teal-400' },
+              ].map((m) => (
+                <div key={m.label}>
+                  <p className={`text-4xl font-bold leading-none tracking-tight ${m.tone}`}>{m.n}</p>
+                  <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {m.label}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Mix bar - proportions at a glance, no legend needed */}
+            <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              {totalFilteredCount === 0 ? (
+                <div className="w-full bg-slate-200 dark:bg-slate-800" />
+              ) : (
+                [
+                  { n: openCount, cls: 'bg-blue-500' },
+                  { n: inProgressCount, cls: 'bg-amber-500' },
+                  { n: totalClosedOrCompleted, cls: 'bg-teal-500' },
+                ].map((seg, i) => (
+                  <div
+                    key={i}
+                    className={seg.cls}
+                    style={{ width: `${(seg.n / totalFilteredCount) * 100}%` }}
+                  />
+                ))
+              )}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">
+              {totalFilteredCount} work order{totalFilteredCount === 1 ? '' : 's'} in view
+            </p>
+          </div>
+        </div>
+
+        {/* ---- SLA compliance dial --------------------------------------- */}
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2 dark:border-slate-800 dark:bg-slate-900">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            SLA compliance
+          </h3>
+
+          <div className="mt-1 flex items-center gap-4">
+            <div className="relative h-28 w-28 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadialBarChart
+                  innerRadius="72%"
+                  outerRadius="100%"
+                  data={[{ value: resolvedWos.length ? dynamicSLA : 0 }]}
+                  startAngle={90}
+                  endAngle={-270}
+                >
+                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                  <RadialBar
+                    background={{ fill: isDark ? '#1e293b' : '#e2e8f0' }}
+                    dataKey="value"
+                    cornerRadius={9}
+                    fill={dynamicSLA >= 90 ? '#10b981' : dynamicSLA >= 70 ? '#f59e0b' : '#f43f5e'}
+                  />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-bold leading-none text-slate-900 dark:text-white">
+                  {resolvedWos.length ? `${dynamicSLA}%` : '—'}
+                </span>
+              </div>
+            </div>
+
+            <div className="min-w-0 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+              {resolvedWos.length ? (
+                <>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    {metSlaCount} of {resolvedWos.length}
+                  </span>{' '}
+                  finished jobs beat their deadline.
+                </>
+              ) : (
+                'Nothing resolved yet, so there is nothing to measure.'
+              )}
+              <span className="mt-2 block text-slate-400">Targets {slaTargetSummary}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ---- Exceptions + PPM, stacked --------------------------------- */}
+        <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:grid-cols-1">
+          <Link
+            to="/work-orders"
+            className={`rounded-2xl border p-4 shadow-sm transition-colors ${
+              breachedCount
+                ? 'border-rose-300 bg-rose-50 hover:border-rose-400 dark:border-rose-900 dark:bg-rose-950/30'
+                : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Past SLA
+              </span>
+              <AlertTriangle
+                className={`h-3.5 w-3.5 ${
+                  breachedCount ? 'text-rose-500' : 'text-slate-300 dark:text-slate-600'
+                }`}
+              />
+            </div>
+            <p
+              className={`mt-2 text-2xl font-bold leading-none ${
+                breachedCount ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'
+              }`}
+            >
+              {breachedCount}
+            </p>
+          </Link>
+
+          <Link
+            to="/ppm/schedules"
+            className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                PPM due
+              </span>
+              <CalendarCheck2 className="h-3.5 w-3.5 text-violet-500" />
+            </div>
+            <p className="mt-2 text-2xl font-bold leading-none text-violet-600 dark:text-violet-400">
+              {duePPMCount}
+            </p>
+          </Link>
+        </div>
+      </div>
+
+      {/* Portfolio strip - the slow-moving totals, kept visually light */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          {
-            label: 'Open',
-            value: openCount,
-            hint: 'New & assigned',
-            to: `/work-orders?status=New${selectedBuilding !== 'ALL' ? `&building=${selectedBuilding}` : ''}`,
-            Icon: Clock,
-            accent: 'text-blue-600 dark:text-blue-400',
-            ring: 'hover:border-blue-400 dark:hover:border-blue-600',
-            tint: 'bg-blue-50 dark:bg-blue-950/40',
-            bar: 'bg-blue-500',
-            wash: 'bg-gradient-to-b from-blue-50/70 to-transparent dark:from-blue-950/20',
-          },
-          {
-            label: 'In Progress',
-            value: inProgressCount,
-            hint: 'Active on site',
-            to: '/work-orders?status=In%20Progress',
-            Icon: Activity,
-            accent: 'text-amber-600 dark:text-amber-400',
-            ring: 'hover:border-amber-400 dark:hover:border-amber-600',
-            tint: 'bg-amber-50 dark:bg-amber-950/40',
-            bar: 'bg-amber-500',
-            wash: 'bg-gradient-to-b from-amber-50/70 to-transparent dark:from-amber-950/20',
-          },
-          {
-            label: 'Past SLA',
-            value: breachedCount,
-            hint: breachedCount ? 'Escalate now' : 'None breached',
-            to: '/work-orders',
-            Icon: AlertTriangle,
-            accent: breachedCount
-              ? 'text-rose-600 dark:text-rose-400'
-              : 'text-slate-400 dark:text-slate-500',
-            ring: 'hover:border-rose-400 dark:hover:border-rose-600',
-            tint: breachedCount ? 'bg-rose-50 dark:bg-rose-950/40' : 'bg-slate-100 dark:bg-slate-800',
-            bar: breachedCount ? 'bg-rose-500' : 'bg-slate-300 dark:bg-slate-700',
-            wash: breachedCount
-              ? 'bg-gradient-to-b from-rose-50/70 to-transparent dark:from-rose-950/20'
-              : '',
-          },
-          {
-            label: 'SLA Compliance',
-            value: resolvedWos.length ? `${dynamicSLA}%` : '—',
-            hint: resolvedWos.length
-              ? `${metSlaCount} of ${resolvedWos.length} met target`
-              : 'Nothing resolved yet',
-            to: '/reports',
-            Icon: ShieldCheck,
-            accent: 'text-emerald-600 dark:text-emerald-400',
-            ring: 'hover:border-emerald-400 dark:hover:border-emerald-600',
-            tint: 'bg-emerald-50 dark:bg-emerald-950/40',
-            bar: 'bg-emerald-500',
-            wash: 'bg-gradient-to-b from-emerald-50/70 to-transparent dark:from-emerald-950/20',
-          },
-        ].map(({ label, value, hint, to, Icon, accent, ring, tint, bar, wash }) => (
+          { label: 'Assets', value: filteredAssets.length, to: '/assets', Icon: Boxes, tone: 'text-sky-500' },
+          { label: 'Buildings', value: buildings.length, to: '/facilities/buildings', Icon: Building2, tone: 'text-teal-500' },
+          { label: 'Completed', value: completedCount, to: '/work-orders?status=Completed', Icon: CheckCircle2, tone: 'text-emerald-500' },
+          { label: 'Closed', value: closedCount, to: '/work-orders?status=Closed', Icon: Archive, tone: 'text-slate-400' },
+        ].map(({ label, value, to, Icon, tone }) => (
           <Link
             key={label}
             to={to}
-            className={`group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900 ${ring}`}
+            className="flex items-center gap-3 rounded-xl border border-slate-200/70 bg-white/70 px-4 py-3 transition-colors hover:bg-white dark:border-slate-800 dark:bg-slate-900/60 dark:hover:bg-slate-900"
           >
-            {/* Accent rule along the top, so each figure reads at a glance */}
-            <span className={`absolute inset-x-0 top-0 h-1 ${bar}`} />
-            {/* Very light wash of the same hue - colour without shouting */}
-            <span className={`pointer-events-none absolute inset-0 ${wash}`} />
-
-            <div className="relative p-4 pt-4.5">
-              <div className="flex items-start justify-between">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  {label}
-                </span>
-                <span className={`rounded-lg p-1.5 ${tint}`}>
-                  <Icon className={`h-3.5 w-3.5 ${accent}`} />
-                </span>
-              </div>
-              <p className={`mt-3 text-3xl font-bold leading-none tracking-tight ${accent}`}>
-                {value}
-              </p>
-              <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                {hint}
+            <Icon className={`h-4 w-4 shrink-0 ${tone}`} />
+            <div className="min-w-0">
+              <p className="text-lg font-bold leading-none text-slate-900 dark:text-white">{value}</p>
+              <p className="mt-1 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {label}
               </p>
             </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Supporting counts - deliberately quieter than the four above */}
-      <div className="grid grid-cols-2 divide-slate-100 rounded-2xl border border-slate-200/80 bg-white shadow-sm sm:grid-cols-4 sm:divide-x dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
-        {[
-          { label: 'Completed', value: completedCount, to: '/work-orders?status=Completed',
-            dot: 'bg-teal-500', hover: 'hover:bg-teal-50/60 dark:hover:bg-teal-950/20' },
-          { label: 'Closed', value: closedCount, to: '/work-orders?status=Closed',
-            dot: 'bg-slate-400', hover: 'hover:bg-slate-50 dark:hover:bg-slate-800/50' },
-          { label: 'PPM Due', value: duePPMCount, to: '/ppm/schedules',
-            dot: 'bg-violet-500', hover: 'hover:bg-violet-50/60 dark:hover:bg-violet-950/20' },
-          { label: 'Assets', value: filteredAssets.length, to: '/assets',
-            dot: 'bg-sky-500', hover: 'hover:bg-sky-50/60 dark:hover:bg-sky-950/20' },
-        ].map(({ label, value, to, dot, hover }) => (
-          <Link key={label} to={to} className={`px-4 py-3.5 transition-colors ${hover}`}>
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
-              {label}
-            </p>
-            <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">{value}</p>
           </Link>
         ))}
       </div>
