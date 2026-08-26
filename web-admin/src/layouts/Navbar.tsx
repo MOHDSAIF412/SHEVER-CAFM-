@@ -8,6 +8,7 @@ import {
   Moon,
   Laptop,
   ChevronDown,
+  Menu,
   LogOut,
   User,
   Shield,
@@ -25,9 +26,11 @@ import { UserRole } from '../types';
 
 interface NavbarProps {
   onOpenCommandPalette: () => void;
+  /** Opens the navigation drawer on small screens. */
+  onOpenMenu?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu }) => {
   const navigate = useNavigate();
   const { user, role, logout } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
@@ -139,7 +142,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette }) => {
   return (
     <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between z-20 transition-colors">
       {/* Left: Global Command Search Button */}
-      <div className="flex items-center space-x-3 max-w-xs w-full">
+      <div className="flex items-center space-x-2 max-w-xs w-full">
+        {/* Drawer trigger - phones and tablets only */}
+        <button
+          onClick={onOpenMenu}
+          aria-label="Open navigation"
+          className="shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
+        >
+          <Menu className="h-4 w-4" />
+        </button>
+
         <button
           onClick={onOpenCommandPalette}
           className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-xs border border-slate-200/80 dark:border-slate-700/60 transition-colors"

@@ -25,9 +25,12 @@ import { useAuth } from '../context/AuthContext';
 interface SidebarProps {
   collapsed: boolean;
   setCollapsed: (v: boolean) => void;
+  /** Drawer state on small screens, where the sidebar sits over the content. */
+  mobileOpen?: boolean;
+  closeMobile?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobileOpen = false, closeMobile }) => {
   const { user, role, isAdmin } = useAuth();
 
   const navigationGroups = [
@@ -77,11 +80,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
   ];
 
   return (
-    <aside
-      className={`relative flex flex-col bg-slate-900 dark:bg-slate-950 border-r border-slate-800 text-slate-300 transition-all duration-200 z-30 select-none ${
-        collapsed ? 'w-16' : 'w-60'
-      }`}
-    >
+    <>
+      {/* Backdrop, phones only. The sidebar used to be a permanent 240px
+          column, which on a 375px screen left the content 135px wide. */}
+      {mobileOpen && (
+        <div
+          onClick={closeMobile}
+          aria-hidden
+          className="fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-sm lg:hidden"
+        />
+      )}
+
+      <aside
+        onClick={(e) => {
+          // Tapping a link should close the drawer on a phone.
+          if (mobileOpen && (e.target as HTMLElement).closest('a')) closeMobile?.();
+        }}
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-800 bg-slate-900 text-slate-300 transition-transform duration-200 select-none dark:bg-slate-950 lg:relative lg:z-30 lg:translate-x-0 lg:transition-all ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        } ${collapsed ? 'w-60 lg:w-16' : 'w-60'}`}
+      >
       {/* Brand Header */}
       <div className="flex items-center justify-between h-14 px-3.5 border-b border-slate-800/80 bg-slate-950/40">
         <NavLink to="/" className="flex items-center space-x-2.5 overflow-hidden">
@@ -176,6 +194,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed }) => 
           </div>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 };
