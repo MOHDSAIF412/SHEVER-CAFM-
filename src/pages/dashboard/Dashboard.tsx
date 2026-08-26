@@ -27,6 +27,11 @@ import {
   CheckCircle,
   Archive,
   ChevronDown,
+  RefreshCw,
+  Megaphone,
+  FileSpreadsheet,
+  Users,
+  Gauge,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,9 +46,16 @@ import {
   RadialBarChart,
   RadialBar,
   PolarAngleAxis,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
+  CartesianGrid,
 } from 'recharts';
 import { cafmDataService } from '../../api/supabase';
 import { getSlaStatus } from '../../utils/sla';
+import { StatusFilterBar } from '../../components/StatusFilterBar';
 import {
   DashboardStats,
   WorkOrder,
@@ -52,6 +64,8 @@ import {
   Building,
   Category,
   SLAConfig,
+  WorkOrderStatus,
+  AuditLog,
 } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -67,6 +81,8 @@ export const Dashboard: React.FC = () => {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [slaConfigs, setSlaConfigs] = useState<SLAConfig[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [lastUpdated] = useState(() => new Date());
   const [loading, setLoading] = useState(true);
 
   // Master Filter States
@@ -74,6 +90,7 @@ export const Dashboard: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL');
   const [datePreset, setDatePreset] = useState<string>('ALL');
+  const [selectedStatus, setSelectedStatus] = useState<WorkOrderStatus | 'ALL'>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -81,7 +98,7 @@ export const Dashboard: React.FC = () => {
     let mounted = true;
     const load = async () => {
       try {
-        const [s, w, p, a, b, c, sla] = await Promise.allSettled([
+        const [s, w, p, a, b, c, sla, logs] = await Promise.allSettled([
           cafmDataService.getDashboardStats(),
           cafmDataService.getWorkOrders(),
           cafmDataService.getPPMSchedules(),
@@ -89,6 +106,7 @@ export const Dashboard: React.FC = () => {
           cafmDataService.getBuildings(),
           cafmDataService.getCategories(),
           cafmDataService.getSlaConfigs(),
+          cafmDataService.getAuditLogs(),
         ]);
         if (!mounted) return;
         if (s.status === 'fulfilled') setStats(s.value);
@@ -98,6 +116,7 @@ export const Dashboard: React.FC = () => {
         if (b.status === 'fulfilled') setBuildings(b.value);
         if (c.status === 'fulfilled') setCategories(c.value);
         if (sla.status === 'fulfilled') setSlaConfigs(sla.value);
+        if (logs.status === 'fulfilled') setAuditLogs(logs.value);
       } catch (err) {
         console.warn('Dashboard load error handled:', err);
       } finally {
@@ -132,6 +151,11 @@ export const Dashboard: React.FC = () => {
         return false;
       }
 
+      // Status filter, driven by the pill bar
+      if (selectedStatus !== 'ALL' && w.status !== selectedStatus) {
+        return false;
+      }
+
       // Date filter
       if (datePreset !== 'ALL') {
         const woDate = new Date(w.created_at);
@@ -160,7 +184,7 @@ export const Dashboard: React.FC = () => {
 
       return true;
     });
-  }, [workOrders, selectedBuilding, selectedCategory, selectedPriority, datePreset, startDate, endDate]);
+  }, [workOrders, selectedBuilding, selectedCategory, selectedPriority, selectedStatus, datePreset, startDate, endDate]);
 
   const filteredAssets = useMemo(() => {
     return assets.filter((a) => {
@@ -218,12 +242,14 @@ export const Dashboard: React.FC = () => {
     (selectedBuilding !== 'ALL' ? 1 : 0) +
     (selectedCategory !== 'ALL' ? 1 : 0) +
     (selectedPriority !== 'ALL' ? 1 : 0) +
+    (selectedStatus !== 'ALL' ? 1 : 0) +
     (datePreset !== 'ALL' ? 1 : 0);
 
   const handleResetFilters = () => {
     setSelectedBuilding('ALL');
     setSelectedCategory('ALL');
     setSelectedPriority('ALL');
+    setSelectedStatus('ALL');
     setDatePreset('ALL');
     setStartDate('');
     setEndDate('');
@@ -293,6 +319,18 @@ export const Dashboard: React.FC = () => {
     return lo === hi ? `${lo} mins` : `${lo}–${hi} mins by priority`;
   }, [slaConfigs]);
 
+  /** Everything the other filters allow, before the status pill narrows it. */
+  const statusBarSource = useMemo(
+    () =>
+      workOrders.filter((w) => {
+        if (selectedBuilding !== 'ALL' && w.building_id !== selectedBuilding) return false;
+        if (selectedCategory !== 'ALL' && w.category_id !== selectedCategory) return false;
+        if (selectedPriority !== 'ALL' && w.priority !== selectedPriority) return false;
+        return true;
+      }),
+    [workOrders, selectedBuilding, selectedCategory, selectedPriority]
+  );
+
   // Open work orders whose resolution deadline has already passed. Measured
   // from resolution_due_at rather than trusting the stored is_overdue flag,
   // which only updates when something writes to the row.
@@ -304,6 +342,149 @@ export const Dashboard: React.FC = () => {
   // Nothing entered yet - show setup guidance rather than a grid of zeroes.
   const isSystemEmpty =
     !loading && buildings.length === 0 && assets.length === 0 && workOrders.length === 0;
+
+  // Everything below runs on every render, above the loading return, so
+  // the hook order stays identical between renders.
+  const priorityData = [
+    { name: 'Emergency', count: filteredWorkOrders.filter((w) => w.priority === 'Emergency').length, fill: '#EF4444' },
+    { name: 'High', count: filteredWorkOrders.filter((w) => w.priority === 'High').length, fill: '#F97316' },
+    { name: 'Medium', count: filteredWorkOrders.filter((w) => w.priority === 'Medium').length, fill: '#F59E0B' },
+    { name: 'Low', count: filteredWorkOrders.filter((w) => w.priority === 'Low').length, fill: '#10B981' },
+  ];
+
+  // ---- figures the reference layout needs, all measured ---------------------
+  const activeWorkOrders = openCount + inProgressCount;
+
+  /** PPM completion: of the scheduled visits, how many are done. */
+  const ppmDone = filteredPPMs.filter((p) =>
+    ['Completed', 'Closed'].includes(p.status)
+  ).length;
+  const ppmCompliance =
+    filteredPPMs.length > 0 ? Math.round((ppmDone / filteredPPMs.length) * 100) : 0;
+
+  /** PPM visits falling in the next seven days. */
+  const upcomingPPM = useMemo(() => {
+    const now = new Date();
+    const in7 = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
+    return filteredPPMs.filter((p) => {
+      if (!p.due_date) return false;
+      const d = new Date(p.due_date);
+      return d >= now && d <= in7;
+    }).length;
+  }, [filteredPPMs]);
+
+  /** Work orders raised per day across the last week. */
+  const dailyTrend = useMemo(() => {
+    const days: { day: string; key: string; count: number }[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      days.push({
+        day: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+        key: d.toISOString().slice(0, 10),
+        count: 0,
+      });
+    }
+    filteredWorkOrders.forEach((w) => {
+      const bucket = days.find((x) => x.key === (w.created_at || '').slice(0, 10));
+      if (bucket) bucket.count += 1;
+    });
+    return days;
+  }, [filteredWorkOrders]);
+
+  /** Busiest trades, largest first. */
+  const topCategories = useMemo(() => {
+    const tally = new Map<string, number>();
+    filteredWorkOrders.forEach((w) => {
+      const name = w.category?.name || 'Uncategorised';
+      tally.set(name, (tally.get(name) || 0) + 1);
+    });
+    const palette = ['#3B82F6', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444'];
+    return [...tally.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count], i) => ({ name, count, fill: palette[i % palette.length] }));
+  }, [filteredWorkOrders]);
+
+  const maxCategoryCount = Math.max(1, ...topCategories.map((c) => c.count));
+
+  /** Donut of the live pipeline. */
+  const workOrderDonut = [
+    { name: 'Open', value: openCount, fill: '#3B82F6' },
+    { name: 'In Progress', value: inProgressCount, fill: '#F59E0B' },
+    { name: 'Resolved', value: totalClosedOrCompleted, fill: '#10B981' },
+  ].filter((d) => d.value > 0);
+
+  const slaDonut = [
+    { name: 'Achieved', value: metSlaCount, fill: '#10B981' },
+    { name: 'Breached', value: resolvedWos.length - metSlaCount, fill: '#EF4444' },
+    { name: 'No target', value: totalFilteredCount - resolvedWos.length, fill: '#E2E8F0' },
+  ].filter((d) => d.value > 0);
+
+  const priorityDonut = priorityData.filter((p) => p.count > 0);
+
+  const QUICK_ACTIONS = [
+    { label: 'New Work Order', to: '/work-orders/new', Icon: Plus, tint: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400' },
+    { label: 'Create PPM', to: '/ppm/plans', Icon: CalendarCheck2, tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400' },
+    { label: 'Asset Registry', to: '/assets', Icon: Boxes, tint: 'bg-teal-50 text-teal-600 dark:bg-teal-950/40 dark:text-teal-400' },
+    { label: 'PPM Schedule', to: '/ppm/schedules', Icon: Calendar, tint: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' },
+    { label: 'Reports', to: '/reports', Icon: ClipboardList, tint: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400' },
+    { label: 'Checklists', to: '/ppm/checklists', Icon: CheckCircle, tint: 'bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-400' },
+    { label: 'Materials', to: '/materials', Icon: Archive, tint: 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400' },
+    { label: 'Users', to: '/users', Icon: Layers, tint: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400' },
+  ];
+
+
+  /**
+   * Asset health. The reference showed Good / Fair / Poor, which this system
+   * does not store - assets carry a status instead. Mapped rather than
+   * invented: Active is healthy, Under Maintenance needs attention, and
+   * Inactive or Disposed is out of service.
+   */
+  const assetHealth = useMemo(() => {
+    const good = filteredAssets.filter((a) => a.status === 'Active').length;
+    const fair = filteredAssets.filter((a) => a.status === 'Under Maintenance').length;
+    const poor = filteredAssets.filter((a) => ['Inactive', 'Disposed'].includes(a.status)).length;
+    const total = good + fair + poor;
+    return {
+      good,
+      fair,
+      poor,
+      total,
+      percent: total > 0 ? Math.round((good / total) * 100) : 0,
+    };
+  }, [filteredAssets]);
+
+  /** Reactive vs preventive volume per day, for the maintenance trend bars. */
+  const maintenanceMix = useMemo(() => {
+    const days: { day: string; key: string; reactive: number; preventive: number }[] = [];
+    const now = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+      days.push({
+        day: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+        key: d.toISOString().slice(0, 10),
+        reactive: 0,
+        preventive: 0,
+      });
+    }
+    filteredWorkOrders.forEach((w) => {
+      const b = days.find((x) => x.key === (w.created_at || '').slice(0, 10));
+      if (b) b.reactive += 1;
+    });
+    filteredPPMs.forEach((ppm) => {
+      const b = days.find((x) => x.key === (ppm.due_date || '').slice(0, 10));
+      if (b) b.preventive += 1;
+    });
+    return days;
+  }, [filteredWorkOrders, filteredPPMs]);
+
+  /**
+   * The reference had a System Announcements panel. There is no announcements
+   * table, so rather than invent notices this shows the real audit trail -
+   * same slot, same shape, actual events.
+   */
+  const recentActivity = useMemo(() => auditLogs.slice(0, 4), [auditLogs]);
 
   if (loading || !stats) {
     return (
@@ -327,12 +508,7 @@ export const Dashboard: React.FC = () => {
   const totalAttentionCount = emergencyWos.length + overduePPMItems.length + pendingApprovalWos.length;
 
 
-  const priorityData = [
-    { name: 'Emergency', count: filteredWorkOrders.filter((w) => w.priority === 'Emergency').length, fill: '#EF4444' },
-    { name: 'High', count: filteredWorkOrders.filter((w) => w.priority === 'High').length, fill: '#F97316' },
-    { name: 'Medium', count: filteredWorkOrders.filter((w) => w.priority === 'Medium').length, fill: '#F59E0B' },
-    { name: 'Low', count: filteredWorkOrders.filter((w) => w.priority === 'Low').length, fill: '#10B981' },
-  ];
+
 
   const todayStr = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -341,706 +517,478 @@ export const Dashboard: React.FC = () => {
     year: 'numeric',
   });
 
+  const card =
+    'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900';
+  const cardTitle =
+    'text-[11px] font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200';
+
+  const pct = (n: number, total: number) =>
+    total > 0 ? `${((n / total) * 100).toFixed(1)}%` : '0.0%';
+
   return (
-    <div className="space-y-5 w-full">
-      {/* 1. Branded command bar - logo, live status, quick actions */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 border border-slate-800 shadow-lg">
-        {/* Brand accent wash */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-teal-500/15 blur-3xl"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-teal-400/50 to-transparent"
-        />
+    <div className="space-y-4 w-full">
+      {/* ===================================================== welcome banner */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative px-5 pt-5 sm:px-6">
+          {/* Skyline, drawn rather than fetched so it themes with the page */}
+          <svg
+            aria-hidden
+            viewBox="0 0 640 150"
+            preserveAspectRatio="xMaxYMax slice"
+            className="pointer-events-none absolute right-0 top-0 hidden h-[150px] w-[62%] md:block"
+          >
+            <g opacity="0.9">
+              <rect x="300" y="70" width="34" height="80" rx="2" fill="#BFDBFE" />
+              <rect x="340" y="46" width="26" height="104" rx="2" fill="#93C5FD" />
+              <rect x="372" y="82" width="30" height="68" rx="2" fill="#DBEAFE" />
+              <rect x="408" y="34" width="24" height="116" rx="2" fill="#60A5FA" />
+              <rect x="438" y="66" width="32" height="84" rx="2" fill="#BFDBFE" />
+              <rect x="476" y="52" width="22" height="98" rx="2" fill="#93C5FD" />
+              <rect x="504" y="88" width="34" height="62" rx="2" fill="#DBEAFE" />
+              <rect x="544" y="58" width="26" height="92" rx="2" fill="#60A5FA" />
+              <rect x="576" y="78" width="30" height="72" rx="2" fill="#BFDBFE" />
+              {/* windows */}
+              {[310, 348, 380, 414, 446, 482, 512, 550, 584].map((x, i) => (
+                <g key={x} fill="#FFFFFF" opacity="0.65">
+                  <rect x={x} y={96 - (i % 3) * 8} width="5" height="6" rx="1" />
+                  <rect x={x + 10} y={110 - (i % 2) * 8} width="5" height="6" rx="1" />
+                  <rect x={x} y={126} width="5" height="6" rx="1" />
+                </g>
+              ))}
+              {/* turbine */}
+              <g stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" fill="none">
+                <path d="M614 150V96" />
+                <path d="M614 96l16-10M614 96l-16-10M614 96v-18" />
+              </g>
+              {/* solar row */}
+              <g fill="#38BDF8" opacity="0.8">
+                <rect x="256" y="128" width="28" height="8" rx="1" transform="rotate(-12 270 132)" />
+                <rect x="256" y="140" width="28" height="8" rx="1" transform="rotate(-12 270 144)" />
+              </g>
+              {/* trees */}
+              {[236, 292, 466, 534].map((x) => (
+                <g key={x}>
+                  <rect x={x + 4} y="138" width="3" height="12" fill="#A7F3D0" />
+                  <circle cx={x + 5.5} cy="134" r="9" fill="#34D399" opacity="0.75" />
+                </g>
+              ))}
+            </g>
+            <rect x="0" y="148" width="640" height="2" fill="#E2E8F0" />
+          </svg>
 
-        <div className="relative flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between">
-          {/* Logo + title */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <img
-              src="/shever-logo.png"
-              alt="Shever Technical Services"
-              className="h-12 w-12 shrink-0 rounded-xl object-contain ring-1 ring-white/15 shadow-md"
-            />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="truncate text-lg font-bold leading-tight text-white">
-                  Facilities Operations
-                </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded-full border border-teal-400/30 bg-teal-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-teal-300">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-teal-400" />
-                  </span>
-                  Live
-                </span>
+          <div className="relative max-w-lg">
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Welcome to</p>
+            <h1 className="mt-0.5 text-2xl font-bold tracking-tight text-blue-600 sm:text-3xl dark:text-blue-400">
+              CAFM Command Centre
+            </h1>
+            <p className="mt-1.5 text-[13px] text-slate-500 dark:text-slate-400">
+              Real-time overview of your facilities operations
+            </p>
+          </div>
+        </div>
+
+        {/* headline figures */}
+        <div className="relative grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {[
+            { label: 'Total Buildings', value: buildings.length, sub: 'Active buildings',
+              Icon: Building2, ring: 'bg-blue-500', to: '/facilities/buildings' },
+            { label: 'Total Assets', value: assets.length.toLocaleString(), sub: 'Registered assets',
+              Icon: Boxes, ring: 'bg-emerald-500', to: '/assets' },
+            { label: 'Active Work Orders', value: activeWorkOrders, sub: 'Open & in progress',
+              Icon: ClipboardList, ring: 'bg-orange-500', to: '/work-orders' },
+            { label: 'PPM Compliance', value: filteredPPMs.length ? `${ppmCompliance}%` : '—',
+              sub: filteredPPMs.length ? `${ppmDone} of ${filteredPPMs.length} visits done` : 'No visits scheduled',
+              Icon: CheckCircle, ring: 'bg-violet-500', to: '/ppm/dashboard' },
+            { label: 'SLA Compliance', value: resolvedWos.length ? `${dynamicSLA}%` : '—',
+              sub: resolvedWos.length ? 'On target' : 'Nothing resolved yet',
+              Icon: ShieldCheck, ring: 'bg-teal-500', to: '/reports' },
+          ].map(({ label, value, sub, Icon, ring, to }) => (
+            <Link
+              key={label}
+              to={to}
+              className="flex items-center gap-3.5 rounded-xl border border-slate-200 bg-white px-4 py-3.5 transition-shadow hover:shadow-md dark:border-slate-800 dark:bg-slate-950/40"
+            >
+              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white ${ring}`}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {label}
+                </p>
+                <p className="text-xl font-bold leading-tight text-slate-900 dark:text-white">
+                  {value}
+                </p>
+                <p className="truncate text-[11px] text-slate-400">{sub}</p>
               </div>
-              <p className="truncate text-[11px] font-medium text-slate-400">
-                Shever Technical Services · CAFM Command Centre · {todayStr}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              to="/work-orders/new"
-              className="flex items-center gap-1.5 rounded-xl bg-teal-500 px-3.5 py-2 text-xs font-bold text-white shadow-lg shadow-teal-500/20 transition-colors hover:bg-teal-400"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>New Work Order</span>
             </Link>
-            <Link
-              to="/ppm/plans"
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
-            >
-              Create PPM
-            </Link>
-            <Link
-              to="/reports"
-              className="rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
-            >
-              Export Reports
-            </Link>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* 1b. First-run guidance - the cloud is empty until master data is added */}
-      {isSystemEmpty && (
-        <div className="rounded-2xl border border-teal-200 bg-teal-50/60 p-4 dark:border-teal-900 dark:bg-teal-950/30">
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-teal-500/15 p-2 text-teal-600 dark:text-teal-400">
-              <Building2 className="h-4 w-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Let&rsquo;s set up your portfolio
-              </h3>
-              <p className="mt-0.5 text-xs text-slate-600 dark:text-slate-400">
-                Nothing has been added yet. Create your buildings and their floors and
-                locations first &mdash; assets and work orders attach to them. Everything you
-                add is stored in the cloud and visible to your whole team.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link
-                  to="/facilities/buildings"
-                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-teal-500"
-                >
-                  1. Add a building
-                </Link>
-                <Link
-                  to="/assets"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  2. Register assets
-                </Link>
-                <Link
-                  to="/work-orders/new"
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                >
-                  3. Raise a work order
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 2. Filters - one compact row.
-             This was a full-width card with a heading, a divider, labelled
-             columns and its own reset row: a lot of vertical space for four
-             dropdowns that are rarely touched. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/70 bg-white/70 p-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/70">
-        <Filter className="ml-1 h-3.5 w-3.5 shrink-0 text-slate-400" />
-
+      {/* ===================================================== filters */}
+      <div className={`flex flex-wrap items-center gap-2 p-2.5 ${card}`}>
         {[
-          {
-            value: selectedBuilding,
-            onChange: setSelectedBuilding,
-            all: 'All buildings',
-            options: buildings.map((b) => ({ id: b.id, label: b.name })),
-          },
-          {
-            value: selectedCategory,
-            onChange: setSelectedCategory,
-            all: 'All trades',
-            options: categories.map((c) => ({ id: c.id, label: c.name })),
-          },
-          {
-            value: selectedPriority,
-            onChange: setSelectedPriority,
-            all: 'All priorities',
-            options: ['Emergency', 'High', 'Medium', 'Low'].map((p) => ({ id: p, label: p })),
-          },
-          {
-            value: datePreset,
-            onChange: setDatePreset,
-            all: 'All time',
+          { value: selectedBuilding, onChange: setSelectedBuilding, all: 'All Buildings',
+            options: buildings.map((b) => ({ id: b.id, label: b.name })) },
+          { value: selectedCategory, onChange: setSelectedCategory, all: 'All Trades',
+            options: categories.map((c) => ({ id: c.id, label: c.name })) },
+          { value: selectedPriority, onChange: setSelectedPriority, all: 'All Priorities',
+            options: ['Emergency', 'High', 'Medium', 'Low'].map((x) => ({ id: x, label: x })) },
+          { value: selectedStatus, onChange: (v: string) => setSelectedStatus(v as WorkOrderStatus | 'ALL'),
+            all: 'All Status',
+            options: ['New', 'Assigned', 'Accepted', 'In Progress', 'On Hold', 'Pending Approval', 'Completed', 'Closed', 'Cancelled'].map((x) => ({ id: x, label: x })) },
+          { value: datePreset, onChange: setDatePreset, all: 'All Time',
             options: [
               { id: 'TODAY', label: 'Today' },
               { id: 'THIS_WEEK', label: 'Last 7 days' },
               { id: 'THIS_MONTH', label: 'Last 30 days' },
-            ],
-          },
+            ] },
         ].map((f, i) => {
           const active = f.value !== 'ALL';
           return (
-            /* The highlight lives on this wrapper, not the <select>. A native
-               select is painted by the browser, so border and background
-               utilities on the element itself do not reliably take effect. */
             <div
               key={i}
-              className={`relative min-w-0 flex-1 rounded-lg border transition-colors sm:flex-none ${
+              className={`relative min-w-0 flex-1 rounded-lg border transition-colors sm:min-w-[9.5rem] sm:flex-none ${
                 active
-                  ? 'border-teal-400 bg-teal-50 dark:border-teal-600 dark:bg-teal-950/40'
-                  : 'border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950'
+                  ? 'border-blue-400 bg-blue-50 dark:border-blue-600 dark:bg-blue-950/40'
+                  : 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950'
               }`}
             >
               <select
                 value={f.value}
                 onChange={(e) => f.onChange(e.target.value)}
                 aria-label={f.all}
-                className={`w-full cursor-pointer appearance-none bg-transparent py-1.5 pl-2.5 pr-7 text-xs font-medium focus:outline-none ${
-                  active
-                    ? 'text-teal-800 dark:text-teal-300'
-                    : 'text-slate-600 dark:text-slate-400'
+                className={`w-full cursor-pointer appearance-none bg-transparent py-2 pl-3 pr-7 text-[13px] font-medium focus:outline-none ${
+                  active ? 'text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
                 }`}
               >
                 <option value="ALL">{f.all}</option>
                 {f.options.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
+                  <option key={o.id} value={o.id}>{o.label}</option>
                 ))}
               </select>
-              <ChevronDown
-                className={`pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 ${
-                  active ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400'
-                }`}
-              />
+              <ChevronDown className={`pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 ${active ? 'text-blue-500' : 'text-slate-400'}`} />
             </div>
           );
         })}
 
-        {activeFiltersCount > 0 && (
+        <div className="ml-auto flex items-center gap-2 pl-1">
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={handleResetFilters}
+              className="rounded-lg px-2 py-1.5 text-[12px] font-semibold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40"
+            >
+              Clear
+            </button>
+          )}
+          <span className="text-[11px] text-slate-400">
+            Last updated: {lastUpdated.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </span>
           <button
-            onClick={handleResetFilters}
-            className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40 dark:hover:text-rose-400"
+            onClick={() => window.location.reload()}
+            title="Refresh"
+            className="rounded-lg border border-slate-200 p-1.5 text-slate-500 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
           >
-            <RotateCcw className="h-3 w-3" />
-            Clear
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
-        )}
-
-        <span className="ml-auto pr-1 text-[11px] font-medium text-slate-400">
-          {totalFilteredCount} work order{totalFilteredCount === 1 ? '' : 's'}
-        </span>
+        </div>
       </div>
 
-      {/* 3. Metrics bento.
-             Previously four equal tiles above four more equal tiles - eight
-             identical rectangles in a row, with nothing to look at first.
-             Varying the sizes gives the eye somewhere to land. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-6">
-
-        {/* ---- Workload: the headline panel ------------------------------ */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-3 dark:border-slate-800 dark:bg-slate-900">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-teal-500/10 blur-2xl"
-          />
-          <div className="relative">
-            <div className="flex items-baseline justify-between">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Live workload
-              </h3>
-              <Link
-                to="/work-orders"
-                className="text-[11px] font-semibold text-teal-600 hover:underline dark:text-teal-400"
-              >
-                View all
-              </Link>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-end gap-x-8 gap-y-4">
-              {[
-                { n: openCount, label: 'Open', tone: 'text-blue-600 dark:text-blue-400' },
-                { n: inProgressCount, label: 'In progress', tone: 'text-amber-600 dark:text-amber-400' },
-                { n: totalClosedOrCompleted, label: 'Resolved', tone: 'text-teal-600 dark:text-teal-400' },
-              ].map((m) => (
-                <div key={m.label}>
-                  <p className={`text-4xl font-bold leading-none tracking-tight ${m.tone}`}>{m.n}</p>
-                  <p className="mt-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    {m.label}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Mix bar - proportions at a glance, no legend needed */}
-            <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-              {totalFilteredCount === 0 ? (
-                <div className="w-full bg-slate-200 dark:bg-slate-800" />
-              ) : (
-                [
-                  { n: openCount, cls: 'bg-blue-500' },
-                  { n: inProgressCount, cls: 'bg-amber-500' },
-                  { n: totalClosedOrCompleted, cls: 'bg-teal-500' },
-                ].map((seg, i) => (
-                  <div
-                    key={i}
-                    className={seg.cls}
-                    style={{ width: `${(seg.n / totalFilteredCount) * 100}%` }}
-                  />
-                ))
-              )}
-            </div>
-            <p className="mt-2 text-[11px] text-slate-400">
-              {totalFilteredCount} work order{totalFilteredCount === 1 ? '' : 's'} in view
-            </p>
-          </div>
-        </div>
-
-        {/* ---- SLA compliance dial --------------------------------------- */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm lg:col-span-2 dark:border-slate-800 dark:bg-slate-900">
-          <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            SLA compliance
-          </h3>
-
-          <div className="mt-1 flex items-center gap-4">
-            <div className="relative h-28 w-28 shrink-0">
+      {/* ===================================================== row 1 */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+        {/* work order overview */}
+        <div className={`p-5 xl:col-span-3 ${card}`}>
+          <h3 className={cardTitle}>Work Order Overview</h3>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="relative h-32 w-32 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart
-                  innerRadius="72%"
-                  outerRadius="100%"
-                  data={[{ value: resolvedWos.length ? dynamicSLA : 0 }]}
-                  startAngle={90}
-                  endAngle={-270}
-                >
-                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
-                  <RadialBar
-                    background={{ fill: isDark ? '#1e293b' : '#e2e8f0' }}
-                    dataKey="value"
-                    cornerRadius={9}
-                    fill={dynamicSLA >= 90 ? '#10b981' : dynamicSLA >= 70 ? '#f59e0b' : '#f43f5e'}
-                  />
-                </RadialBarChart>
+                <PieChart>
+                  <Pie data={workOrderDonut.length ? workOrderDonut : [{ name: 'None', value: 1, fill: isDark ? '#1e293b' : '#E2E8F0' }]}
+                       dataKey="value" innerRadius="66%" outerRadius="100%" paddingAngle={2} stroke="none">
+                    {(workOrderDonut.length ? workOrderDonut : [{ fill: isDark ? '#1e293b' : '#E2E8F0' }]).map((d, i) => (
+                      <Cell key={i} fill={d.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-bold leading-none text-slate-900 dark:text-white">
-                  {resolvedWos.length ? `${dynamicSLA}%` : '—'}
-                </span>
+                <span className="text-2xl font-bold leading-none text-slate-900 dark:text-white">{totalFilteredCount}</span>
+                <span className="mt-0.5 text-[10px] text-slate-400">Total</span>
               </div>
             </div>
 
-            <div className="min-w-0 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-              {resolvedWos.length ? (
-                <>
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {metSlaCount} of {resolvedWos.length}
-                  </span>{' '}
-                  finished jobs beat their deadline.
-                </>
-              ) : (
-                'Nothing resolved yet, so there is nothing to measure.'
-              )}
-              <span className="mt-2 block text-slate-400">Targets {slaTargetSummary}</span>
-            </div>
+            <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
+              {[
+                { c: '#3B82F6', label: 'Open', n: openCount },
+                { c: '#F59E0B', label: 'In Progress', n: inProgressCount },
+                { c: '#10B981', label: 'Resolved', n: completedCount },
+                { c: '#8B5CF6', label: 'Closed', n: closedCount },
+              ].map((r) => (
+                <li key={r.label} className="flex items-center gap-2">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.c }} />
+                  <span className="w-6 font-bold text-slate-900 dark:text-white">{r.n}</span>
+                  <span className="min-w-0 flex-1 truncate text-slate-500 dark:text-slate-400">{r.label}</span>
+                  <span className="text-slate-400">{pct(r.n, totalFilteredCount)}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-
-        {/* ---- Exceptions + PPM, stacked --------------------------------- */}
-        <div className="grid grid-cols-2 gap-3 lg:col-span-1 lg:grid-cols-1">
-          <Link
-            to="/work-orders"
-            className={`rounded-2xl border p-4 shadow-sm transition-colors ${
-              breachedCount
-                ? 'border-rose-300 bg-rose-50 hover:border-rose-400 dark:border-rose-900 dark:bg-rose-950/30'
-                : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Past SLA
-              </span>
-              <AlertTriangle
-                className={`h-3.5 w-3.5 ${
-                  breachedCount ? 'text-rose-500' : 'text-slate-300 dark:text-slate-600'
-                }`}
-              />
-            </div>
-            <p
-              className={`mt-2 text-2xl font-bold leading-none ${
-                breachedCount ? 'text-rose-600 dark:text-rose-400' : 'text-slate-400 dark:text-slate-500'
-              }`}
-            >
-              {breachedCount}
-            </p>
-          </Link>
-
-          <Link
-            to="/ppm/schedules"
-            className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-colors hover:border-violet-300 dark:border-slate-800 dark:bg-slate-900"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                PPM due
-              </span>
-              <CalendarCheck2 className="h-3.5 w-3.5 text-violet-500" />
-            </div>
-            <p className="mt-2 text-2xl font-bold leading-none text-violet-600 dark:text-violet-400">
-              {duePPMCount}
-            </p>
+          <Link to="/work-orders" className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold text-blue-600 hover:underline dark:text-blue-400">
+            View all work orders <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-      </div>
 
-      {/* Portfolio strip - the slow-moving totals, kept visually light */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[
-          { label: 'Assets', value: filteredAssets.length, to: '/assets', Icon: Boxes, tone: 'text-sky-500' },
-          { label: 'Buildings', value: buildings.length, to: '/facilities/buildings', Icon: Building2, tone: 'text-teal-500' },
-          { label: 'Completed', value: completedCount, to: '/work-orders?status=Completed', Icon: CheckCircle2, tone: 'text-emerald-500' },
-          { label: 'Closed', value: closedCount, to: '/work-orders?status=Closed', Icon: Archive, tone: 'text-slate-400' },
-        ].map(({ label, value, to, Icon, tone }) => (
-          <Link
-            key={label}
-            to={to}
-            className="flex items-center gap-3 rounded-xl border border-slate-200/70 bg-white/70 px-4 py-3 transition-colors hover:bg-white dark:border-slate-800 dark:bg-slate-900/60 dark:hover:bg-slate-900"
-          >
-            <Icon className={`h-4 w-4 shrink-0 ${tone}`} />
-            <div className="min-w-0">
-              <p className="text-lg font-bold leading-none text-slate-900 dark:text-white">{value}</p>
-              <p className="mt-1 truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                {label}
-              </p>
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* 4. Exceptions needing a supervisor.
-             When there is nothing wrong this used to render a full card with a
-             heading, a divider and a large centred tick - roughly 200px to say
-             "no news". It now collapses to a single line. */}
-      {totalAttentionCount === 0 ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/70 bg-emerald-50/60 px-4 py-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/20">
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
-            Nothing needs attention &mdash; no emergencies, SLA breaches or overdue PPM.
-          </p>
-        </div>
-      ) : (
-      <div className="overflow-hidden rounded-2xl border border-rose-200/70 bg-white shadow-sm dark:border-rose-900/40 dark:bg-slate-900">
-        <div className="flex items-center justify-between gap-3 border-b border-rose-100 bg-rose-50/60 px-4 py-3 dark:border-rose-900/40 dark:bg-rose-950/20">
-          <div className="flex items-center gap-2.5">
-            <span className="rounded-lg bg-rose-100 p-1.5 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
-              <AlertTriangle className="h-4 w-4" />
-            </span>
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
-                Needs Attention
-              </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Exceptions requiring a supervisor or manager
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 rounded-full bg-rose-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
-            {totalAttentionCount}
-          </span>
-        </div>
-
-        <div className="p-4">
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Emergency Work Orders */}
-            {emergencyWos.map((w) => (
-              <Link
-                key={w.id}
-                to={`/work-orders/${w.id}`}
-                className="p-3.5 bg-red-50/50 dark:bg-red-950/20 border border-red-200/80 dark:border-red-900/40 rounded-xl hover:border-red-400 transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-red-700 dark:text-red-400 flex items-center">
-                      <Flame className="w-3.5 h-3.5 mr-1" />
-                      {w.wo_number}
-                    </span>
-                    <span className="text-[10px] bg-red-600 text-white px-1.5 py-0.5 rounded font-bold uppercase">
-                      Emergency
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-800 dark:text-slate-200 font-medium line-clamp-2">
-                    {w.problem_description}
-                  </p>
-                </div>
-                <div className="mt-2.5 pt-2 border-t border-red-100 dark:border-red-900/30 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                  <span>📍 {w.building?.name || 'Main Tower'}</span>
-                  <span className="text-red-600 dark:text-red-400 font-bold flex items-center">
-                    Action &rarr;
-                  </span>
-                </div>
-              </Link>
-            ))}
-
-            {/* Overdue PPM */}
-            {overduePPMItems.map((p) => (
-              <Link
-                key={p.id}
-                to="/ppm/schedules?status=Overdue"
-                className="p-3.5 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl hover:border-amber-400 transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                      {p.schedule_number}
-                    </span>
-                    <span className="text-[10px] bg-amber-500 text-white px-1.5 py-0.5 rounded font-bold uppercase">
-                      Overdue PPM
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-800 dark:text-slate-200 font-medium">
-                    {p.plan?.title || 'Preventive Inspection Run'}
-                  </p>
-                </div>
-                <div className="mt-2.5 pt-2 border-t border-amber-100 dark:border-amber-900/30 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                  <span>Due: {p.due_date}</span>
-                  <span className="text-amber-600 dark:text-amber-400 font-bold flex items-center">
-                    Execute &rarr;
-                  </span>
-                </div>
-              </Link>
-            ))}
-
-            {/* Pending Approvals */}
-            {pendingApprovalWos.map((w) => (
-              <Link
-                key={w.id}
-                to={`/work-orders/${w.id}`}
-                className="p-3.5 bg-purple-50/50 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-900/40 rounded-xl hover:border-purple-400 transition-colors flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-bold text-purple-700 dark:text-purple-400">
-                      {w.wo_number}
-                    </span>
-                    <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.5 rounded font-bold uppercase">
-                      Pending Approval
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-800 dark:text-slate-200 font-medium line-clamp-2">
-                    {w.work_performed || w.problem_description}
-                  </p>
-                </div>
-                <div className="mt-2.5 pt-2 border-t border-purple-100 dark:border-purple-900/30 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                  <span>By: {w.assigned_technician?.full_name || 'Tech'}</span>
-                  <span className="text-purple-600 dark:text-purple-400 font-bold flex items-center">
-                    Sign-Off &rarr;
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* 5. Main Visualizations Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Performance Trend Area Chart (2 cols) */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                Facilities Maintenance Volume & Delivery Trend
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Reactive maintenance logged vs completed vs planned preventive maintenance
-              </p>
-            </div>
-            <span className="text-[11px] font-semibold text-teal-600 dark:text-teal-400">
-              Active Sample: {filteredWorkOrders.length} Jobs
+        {/* work orders trend */}
+        <div className={`p-5 xl:col-span-4 ${card}`}>
+          <div className="flex items-center justify-between">
+            <h3 className={cardTitle}>Work Orders Trend</h3>
+            <span className="rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-500 dark:border-slate-700">
+              This week
             </span>
           </div>
-
-          <div className="h-64">
+          <div className="mt-4 h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={monthlyTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorReactive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="colorCompleted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="month" stroke="#94A3B8" fontSize={11} tickLine={false} />
-                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                    borderColor: isDark ? '#334155' : '#E2E8F0',
-                    borderRadius: '0.75rem',
-                    fontSize: '12px',
-                    color: isDark ? '#FFFFFF' : '#000000',
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                <Area type="monotone" dataKey="reactive" name="Reactive Logged" stroke="#0EA5E9" fillOpacity={1} fill="url(#colorReactive)" strokeWidth={2} />
-                <Area type="monotone" dataKey="completed" name="Closed & Done" stroke="#10B981" fillOpacity={1} fill="url(#colorCompleted)" strokeWidth={2} />
-              </AreaChart>
+              <LineChart data={dailyTrend} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#F1F5F9'} vertical={false} />
+                <XAxis dataKey="day" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid #E2E8F0' }} />
+                <Line type="monotone" dataKey="count" name="Logged" stroke="#3B82F6" strokeWidth={2}
+                      dot={{ r: 3, fill: '#3B82F6' }} activeDot={{ r: 5 }} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Priority Breakdown (1 col) */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 rounded-2xl shadow-sm flex flex-col justify-between">
-          <div>
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider mb-1">
-              Priority Distribution
-            </h3>
-            <p className="text-[11px] text-slate-400 mb-4">
-              Breakdown across active ticket pool
-            </p>
-
-            <div className="h-44">
+        {/* sla compliance */}
+        <div className={`p-5 xl:col-span-3 ${card}`}>
+          <h3 className={cardTitle}>SLA Compliance</h3>
+          <div className="mt-4 flex items-center gap-4">
+            <div className="relative h-32 w-32 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={priorityData} layout="vertical" margin={{ top: 0, right: 20, left: 10, bottom: 0 }}>
-                  <XAxis type="number" stroke="#94A3B8" fontSize={10} hide />
-                  <YAxis type="category" dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} axisLine={false} width={75} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                      borderColor: isDark ? '#334155' : '#E2E8F0',
-                      borderRadius: '0.75rem',
-                      fontSize: '11px',
-                    }}
-                  />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={16} />
-                </BarChart>
+                <PieChart>
+                  <Pie data={slaDonut.length ? slaDonut : [{ name: 'None', value: 1, fill: isDark ? '#1e293b' : '#E2E8F0' }]}
+                       dataKey="value" innerRadius="70%" outerRadius="100%" paddingAngle={2} stroke="none">
+                    {(slaDonut.length ? slaDonut : [{ fill: isDark ? '#1e293b' : '#E2E8F0' }]).map((d, i) => (
+                      <Cell key={i} fill={d.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
               </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
+                  {resolvedWos.length ? `${dynamicSLA}%` : '—'}
+                </span>
+                <span className="mt-0.5 text-[10px] text-slate-400">On target</span>
+              </div>
             </div>
-          </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 flex items-center justify-between">
-            {/* This read "< 120 mins avg", which was hard-coded and matched
-                none of the configured targets. Shows the real range now. */}
-            <span>Response targets</span>
-            <span className="font-bold text-slate-800 dark:text-slate-200">
-              {slaTargetSummary}
-            </span>
+            <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
+              {[
+                { label: 'Achieved', n: metSlaCount, tone: 'text-emerald-600 dark:text-emerald-400' },
+                { label: 'Breached', n: resolvedWos.length - metSlaCount, tone: 'text-rose-600 dark:text-rose-400' },
+                { label: 'At risk', n: filteredWorkOrders.filter((w) => getSlaStatus(w).state === 'critical').length, tone: 'text-amber-600 dark:text-amber-400' },
+                { label: 'No target', n: filteredWorkOrders.filter((w) => !w.resolution_due_at).length, tone: 'text-slate-400' },
+              ].map((r) => (
+                <li key={r.label} className="flex items-center justify-between gap-2">
+                  <span className={`truncate font-medium ${r.tone}`}>{r.label}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{r.n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="mt-3 text-[11px] text-slate-400">Targets {slaTargetSummary}</p>
+        </div>
+
+        {/* right stack */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 xl:col-span-2 xl:grid-cols-1">
+          {[
+            { label: 'PPM Due Today', value: duePPMCount, Icon: Calendar,
+              tint: 'bg-violet-50 text-violet-600 dark:bg-violet-950/40 dark:text-violet-400',
+              tone: 'text-violet-600 dark:text-violet-400', to: '/ppm/schedules' },
+            { label: 'Overdue PPM', value: overduePPMCount, Icon: AlertTriangle,
+              tint: 'bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400',
+              tone: 'text-rose-600 dark:text-rose-400', to: '/ppm/schedules' },
+            { label: 'Past SLA Breaches', value: breachedCount, Icon: Clock,
+              tint: 'bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-400',
+              tone: 'text-orange-600 dark:text-orange-400', to: '/work-orders' },
+          ].map(({ label, value, Icon, tint, tone, to }) => (
+            <Link key={label} to={to} className={`flex items-center gap-3 p-4 transition-shadow hover:shadow-md ${card}`}>
+              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tint}`}>
+                <Icon className="h-4.5 w-4.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                <p className={`text-2xl font-bold leading-tight ${tone}`}>{value}</p>
+              </div>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* ===================================================== row 2 */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {/* maintenance trend */}
+        <div className={`p-5 ${card}`}>
+          <h3 className={cardTitle}>Facilities Maintenance Trend</h3>
+          <p className="mt-0.5 text-[11px] text-slate-400">Reactive vs preventive</p>
+          <div className="mt-4 h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={maintenanceMix} margin={{ top: 4, right: 4, left: -26, bottom: 0 }} barGap={2}>
+                <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#1e293b' : '#F1F5F9'} vertical={false} />
+                <XAxis dataKey="day" stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10 }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
+                <Bar dataKey="reactive" name="Reactive" fill="#FB7185" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="preventive" name="Preventive" fill="#34D399" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* priority distribution */}
+        <div className={`p-5 ${card}`}>
+          <h3 className={cardTitle}>Priority Distribution</h3>
+          <p className="mt-0.5 text-[11px] text-slate-400">Across active work orders</p>
+          <div className="mt-3 flex items-center gap-4">
+            <div className="relative h-28 w-28 shrink-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={priorityDonut.length ? priorityDonut : [{ name: 'None', count: 1, fill: isDark ? '#1e293b' : '#E2E8F0' }]}
+                       dataKey="count" innerRadius="64%" outerRadius="100%" paddingAngle={2} stroke="none">
+                    {(priorityDonut.length ? priorityDonut : [{ fill: isDark ? '#1e293b' : '#E2E8F0' }]).map((d, i) => (
+                      <Cell key={i} fill={d.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-xl font-bold leading-none text-slate-900 dark:text-white">{totalFilteredCount}</span>
+                <span className="text-[10px] text-slate-400">Total</span>
+              </div>
+            </div>
+            <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
+              {priorityData.map((r) => (
+                <li key={r.name} className="flex items-center gap-2">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.fill }} />
+                  <span className="min-w-0 flex-1 truncate text-slate-500 dark:text-slate-400">{r.name}</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{r.count}</span>
+                  <span className="text-slate-400">({pct(r.count, totalFilteredCount)})</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        {/* top categories */}
+        <div className={`p-5 ${card}`}>
+          <h3 className={cardTitle}>Top 5 Categories</h3>
+          <p className="mt-0.5 text-[11px] text-slate-400">By work order count</p>
+          {topCategories.length === 0 ? (
+            <p className="mt-8 text-center text-[12px] text-slate-400">No work orders yet.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {topCategories.map((c) => (
+                <li key={c.name} className="flex items-center gap-2.5 text-[12px]">
+                  <span className="w-16 shrink-0 truncate text-slate-500 dark:text-slate-400">{c.name}</span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                    <span className="block h-full rounded-full" style={{ width: `${(c.count / maxCategoryCount) * 100}%`, background: c.fill }} />
+                  </span>
+                  <span className="w-4 shrink-0 text-right font-bold text-slate-900 dark:text-white">{c.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* asset health */}
+        <div className={`p-5 ${card}`}>
+          <h3 className={cardTitle}>Asset Health Overview</h3>
+          <div className="mt-2 flex flex-col items-center">
+            <div className="relative h-28 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadialBarChart innerRadius="66%" outerRadius="100%" startAngle={200} endAngle={-20}
+                                data={[{ value: assetHealth.percent }]}>
+                  <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                  <RadialBar background={{ fill: isDark ? '#1e293b' : '#F1F5F9' }} dataKey="value" cornerRadius={8}
+                            fill={assetHealth.percent >= 80 ? '#10B981' : assetHealth.percent >= 50 ? '#F59E0B' : '#EF4444'} />
+                </RadialBarChart>
+              </ResponsiveContainer>
+              <div className="pointer-events-none absolute inset-x-0 bottom-2 flex flex-col items-center">
+                <span className="text-xl font-bold leading-none text-slate-900 dark:text-white">
+                  {assetHealth.total ? `${assetHealth.percent}%` : '—'}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {assetHealth.total ? 'In service' : 'No assets'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-2 grid w-full grid-cols-3 gap-2">
+              {[
+                { label: 'Good', n: assetHealth.good, tone: 'text-emerald-600 dark:text-emerald-400' },
+                { label: 'Fair', n: assetHealth.fair, tone: 'text-amber-600 dark:text-amber-400' },
+                { label: 'Poor', n: assetHealth.poor, tone: 'text-rose-600 dark:text-rose-400' },
+              ].map((b) => (
+                <div key={b.label} className="rounded-lg border border-slate-200 py-2 text-center dark:border-slate-800">
+                  <p className={`text-[10px] font-bold uppercase ${b.tone}`}>{b.label}</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{b.n.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 6. Recent Work Orders Activity Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-              Recent Work Orders Stream
-            </h3>
-            <p className="text-[11px] text-slate-400">
-              Live updates matching active filter criteria
-            </p>
+      {/* ===================================================== row 3 */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className={`p-5 xl:col-span-2 ${card}`}>
+          <h3 className={cardTitle}>Quick Actions</h3>
+          <div className="mt-4 grid grid-cols-4 gap-3 sm:grid-cols-8">
+            {QUICK_ACTIONS.map(({ label, to, Icon, tint }) => (
+              <Link key={label} to={to} className="group flex flex-col items-center gap-2 text-center">
+                <span className={`flex h-12 w-12 items-center justify-center rounded-2xl transition-transform group-hover:scale-105 ${tint}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="text-[10px] font-medium leading-tight text-slate-600 dark:text-slate-400">
+                  {label}
+                </span>
+              </Link>
+            ))}
           </div>
-          <Link
-            to="/work-orders"
-            className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline flex items-center space-x-1"
-          >
-            <span>View All Ledger</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
-              <tr>
-                <th className="px-4 py-3">WO Number</th>
-                <th className="px-4 py-3">Priority</th>
-                <th className="px-4 py-3">Trade / Dept</th>
-                <th className="px-4 py-3">Building & Location</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Technician</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {filteredWorkOrders.slice(0, 7).map((wo) => {
-                const isEmergency = wo.priority === 'Emergency';
-                const isHigh = wo.priority === 'High';
-                return (
-                  <tr key={wo.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="px-4 py-3 font-extrabold text-teal-700 dark:text-teal-400">
-                      <Link to={`/work-orders/${wo.id}`} className="hover:underline">
-                        {wo.wo_number}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                          isEmergency
-                            ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
-                            : isHigh
-                            ? 'bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-400'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        {wo.priority}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300 font-medium">
-                      {wo.category?.name || 'General'}
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">
-                        {wo.building?.name || 'Main Tower'}
-                      </div>
-                      <div className="text-[11px] text-slate-400">
-                        {wo.floor?.name || 'Level 1'} • {wo.asset?.name || 'General Area'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-700 dark:text-slate-300 max-w-xs truncate">
-                      {wo.problem_description}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                      {wo.assigned_technician?.full_name || 'Unassigned'}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          wo.status === 'Completed' || wo.status === 'Closed'
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                            : wo.status === 'In Progress'
-                            ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
-                            : wo.status === 'Pending Approval'
-                            ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        {wo.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Link
-                        to={`/work-orders/${wo.id}`}
-                        className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-600 rounded-lg text-[11px] font-bold transition-colors"
-                      >
-                        Manage
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className={`p-5 ${card}`}>
+          <div className="flex items-center justify-between">
+            <h3 className={cardTitle}>Recent Activity</h3>
+            <Link to="/audit" className="text-[11px] font-semibold text-blue-600 hover:underline dark:text-blue-400">
+              View all
+            </Link>
+          </div>
+          {recentActivity.length === 0 ? (
+            <p className="mt-8 text-center text-[12px] text-slate-400">Nothing recorded yet.</p>
+          ) : (
+            <ul className="mt-4 space-y-3">
+              {recentActivity.map((log) => (
+                <li key={log.id} className="flex gap-2.5">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+                    <Megaphone className="h-3.5 w-3.5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-semibold text-slate-800 dark:text-slate-200">
+                      {log.action.replace(/_/g, ' ')}
+                    </p>
+                    <p className="truncate text-[11px] text-slate-400">
+                      {log.module} · {log.user_email || 'system'} ·{' '}
+                      {new Date(log.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

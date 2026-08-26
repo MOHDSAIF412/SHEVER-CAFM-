@@ -96,12 +96,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
           // Tapping a link should close the drawer on a phone.
           if (mobileOpen && (e.target as HTMLElement).closest('a')) closeMobile?.();
         }}
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-800 bg-slate-900 text-slate-300 transition-transform duration-200 select-none dark:bg-slate-950 lg:relative lg:z-30 lg:translate-x-0 lg:transition-all ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200 bg-white text-slate-600 transition-transform duration-200 select-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 lg:relative lg:z-30 lg:translate-x-0 lg:transition-all ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         } ${collapsed ? 'w-60 lg:w-16' : 'w-60'}`}
       >
       {/* Brand Header */}
-      <div className="flex items-center justify-between h-14 px-3.5 border-b border-slate-800/80 bg-slate-950/40">
+      <div className="flex items-center justify-between h-14 px-3.5 border-b border-slate-200 bg-slate-50/80 dark:border-slate-800/80 dark:bg-slate-950/40">
         <NavLink to="/" className="flex items-center space-x-2.5 overflow-hidden">
           <img
             src="/shever-logo.png"
@@ -113,7 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
           />
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-extrabold tracking-wider text-white truncate">
+              <span className="text-xs font-extrabold tracking-wider text-slate-900 dark:text-white truncate">
                 SHEVER
               </span>
               <span className="text-[9px] font-semibold text-teal-400 tracking-wider truncate uppercase">
@@ -124,7 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
         </NavLink>
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+          className="p-1 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
           title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -136,7 +136,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
         {navigationGroups.map((group) => (
           <div key={group.title} className="space-y-1">
             {!collapsed && (
-              <h4 className="px-2.5 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+              <h4 className="px-2.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">
                 {group.title}
               </h4>
             )}
@@ -150,8 +150,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
                   className={({ isActive }) =>
                     `flex items-center px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
                       isActive
-                        ? 'bg-teal-500/15 text-teal-400 font-semibold border border-teal-500/30'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                        ? 'bg-teal-50 text-teal-700 font-semibold border border-teal-200 dark:bg-teal-500/15 dark:text-teal-400 dark:border-teal-500/30'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/60'
                     } ${collapsed ? 'justify-center' : 'space-x-2.5'}`
                   }
                   title={collapsed ? item.name : undefined}
@@ -166,18 +166,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
       </div>
 
       {/* Bottom User / Cloud Status Section */}
-      <div className="p-2.5 border-t border-slate-800 bg-slate-950/60">
+      <div className="p-2.5 border-t border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-950/60">
         {!collapsed ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 min-w-0">
-              <div className="w-7 h-7 rounded-full bg-teal-600/30 border border-teal-500/40 text-teal-300 font-bold text-xs flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-teal-100 border border-teal-200 text-teal-700 dark:bg-teal-600/30 dark:border-teal-500/40 dark:text-teal-300 font-bold text-xs flex items-center justify-center shrink-0">
                 {user?.full_name?.charAt(0) || 'A'}
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-white truncate">
+                <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
                   {user?.full_name || 'Administrator'}
                 </div>
-                <div className="text-[10px] text-slate-400 capitalize truncate">
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 capitalize truncate">
                   {role ? role.replace('_', ' ') : 'Admin'}
                 </div>
               </div>
@@ -188,7 +188,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
           </div>
         ) : (
           <div className="flex justify-center" title={`${user?.full_name} (${role})`}>
-            <div className="w-7 h-7 rounded-full bg-teal-600/30 border border-teal-500/40 text-teal-300 font-bold text-xs flex items-center justify-center">
+            <div className="w-7 h-7 rounded-full bg-teal-100 border border-teal-200 text-teal-700 dark:bg-teal-600/30 dark:border-teal-500/40 dark:text-teal-300 font-bold text-xs flex items-center justify-center">
               {user?.full_name?.charAt(0) || 'A'}
             </div>
           </div>
