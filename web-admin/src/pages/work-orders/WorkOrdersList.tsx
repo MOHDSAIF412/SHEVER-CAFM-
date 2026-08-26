@@ -20,6 +20,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
+import { SlaCountdown } from '../../components/SlaCountdown';
 import { WorkOrder, Building as BuildingType, Category, UserProfile } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { exportWorkOrdersToExcel } from '../../utils/excelExporter';
@@ -368,6 +369,7 @@ export const WorkOrdersList: React.FC = () => {
                 </th>
                 <th className="px-4 py-3">WO Number & Logged Time</th>
                 <th className="px-4 py-3">Priority</th>
+                <th className="px-4 py-3">SLA</th>
                 <th className="px-4 py-3">Trade / Category</th>
                 <th className="px-4 py-3">Facility Location & Asset</th>
                 <th className="px-4 py-3">Problem Description</th>
@@ -423,6 +425,9 @@ export const WorkOrdersList: React.FC = () => {
                         {isEmergency && <Flame className="w-3 h-3 mr-1 text-red-600" />}
                         {wo.priority}
                       </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <SlaCountdown workOrder={wo} />
                     </td>
                     <td className="px-4 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
                       {wo.category?.name || 'General'}

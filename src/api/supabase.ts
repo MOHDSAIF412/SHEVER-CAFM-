@@ -14,8 +14,12 @@ import {
   DashboardStats,
   AuditLog,
   SystemSettings,
-  PPMChecklist
+  PPMChecklist,
+  PPMChecklistItem
 } from '../types';
+
+/** Supabase Storage bucket holding work-order before/after photos. */
+export const PHOTO_BUCKET = 'work-order-photos';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mock-shever.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-anon-key';
@@ -600,6 +604,8 @@ let memoryWorkOrders = loadStore('shever_work_orders', [...SEED_WORK_ORDERS]);
 let memoryPPMPlans = loadStore('shever_ppm_plans', [...SEED_PPM_PLANS]);
 let memoryPPMSchedules = loadStore('shever_ppm_schedules', [...SEED_PPM_SCHEDULES]);
 let memoryMaterials = loadStore('shever_materials', [...SEED_MATERIALS]);
+let memoryChecklists = loadStore<PPMChecklist[]>('shever_ppm_checklists', []);
+let memoryChecklistItems = loadStore<PPMChecklistItem[]>('shever_ppm_checklist_items', []);
 let memorySettings = loadStore('shever_settings', { ...SEED_SETTINGS });
 let memoryAuditLogs = loadStore<AuditLog[]>('shever_audit_logs', [
   {
@@ -1454,6 +1460,388 @@ export const cafmDataService = {
       return cloud;
     }
     return memoryAuditLogs;
+  },
+
+  // ============================================================================
+  // MATERIALS & STOCK
+  // ============================================================================
+  async createMaterial(data: Partial<Material>): Promise<Material> {
+    const material: Material = {
+      id: newId(),
+      item_code: (data.item_code || `MAT-${Date.now().toString().slice(-6)}`).toUpperCase(),
+      name: data.name || 'New Material',
+      category: data.category || 'General',
+      unit: data.unit || 'pcs',
+      quantity_in_stock: Number(data.quantity_in_stock ?? 0),
+      min_stock_level: Number(data.min_stock_level ?? 5),
+      unit_cost: Number(data.unit_cost ?? 0),
+      location: data.location || 'Central Store',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    await cloudWrite('Creating material', () =>
+      supabase.from('materials').insert(toRow(material))
+    );
+    memoryMaterials.unshift(material);
+    saveStore('shever_materials', memoryMaterials);
+    return material;
+  },
+
+  async updateMaterial(id: string, data: Partial<Material>): Promise<Material> {
+    const target = memoryMaterials.find((m) => m.id === id);
+    if (!target) throw new Error('Material not found');
+    await cloudWrite('Updating material', () =>
+      supabase
+        .from('materials')
+        .update(toRow({ ...data, updated_at: new Date().toISOString() }))
+        .eq('id', id)
+    );
+    Object.assign(target, data);
+    saveStore('shever_materials', memoryMaterials);
+    return target;
+  },
+
+  async deleteMaterial(id: string): Promise<boolean> {
+    await cloudWrite('Deleting material', () => supabase.from('materials').delete().eq('id', id));
+    memoryMaterials = memoryMaterials.filter((m) => m.id !== id);
+    saveStore('shever_materials', memoryMaterials);
+    return true;
+  },
+
+  /**
+   * Stock movement. Writes a material_transactions row alongside the new level
+   * so consumption stays auditable rather than the quantity silently changing.
+   */
+  async adjustMaterialStock(
+    id: string,
+    delta: number,
+    reason: 'IN' | 'OUT' | 'ADJUST',
+    notes?: string
+  ): Promise<Material> {
+    const target = memoryMaterials.find((m) => m.id === id);
+    if (!target) throw new Error('Material not found');
+
+    const next = Math.max(0, Number(target.quantity_in_stock) + delta);
+
+    await cloudWrite('Updating stock level', () =>
+      supabase
+        .from('materials')
+        .update({ quantity_in_stock: next, updated_at: new Date().toISOString() })
+        .eq('id', id)
+    );
+
+    // Ledger entry is best-effort: the stock level is the source of truth and
+    // must not be rolled back if only the audit row fails.
+    try {
+      await cloudWrite('Recording stock movement', () =>
+        supabase.from('material_transactions').insert(
+          toRow({
+            id: newId(),
+            material_id: id,
+            transaction_type: reason,
+            quantity: Math.abs(delta),
+            reference_type: 'AUDIT_ADJUSTMENT',
+            notes: notes || `Stock ${reason} of ${Math.abs(delta)} ${target.unit}`,
+            created_at: new Date().toISOString(),
+          })
+        )
+      );
+    } catch (e) {
+      console.warn('Stock ledger entry failed; level was still updated', e);
+    }
+
+    target.quantity_in_stock = next;
+    saveStore('shever_materials', memoryMaterials);
+    return target;
+  },
+
+  // ============================================================================
+  // CATEGORIES & SUBCATEGORIES
+  // ============================================================================
+  async createCategory(data: Partial<Category>): Promise<Category> {
+    const category: Category = {
+      id: newId(),
+      name: data.name || 'New Trade',
+      code: (data.code || data.name || 'NEW').toUpperCase().slice(0, 12),
+      description: data.description,
+      icon: data.icon || 'Wrench',
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    await cloudWrite('Creating category', () =>
+      supabase.from('categories').insert(toRow(category))
+    );
+    memoryCategories.push(category);
+    saveStore('shever_categories', memoryCategories);
+    return category;
+  },
+
+  async updateCategory(id: string, data: Partial<Category>): Promise<Category> {
+    const target = memoryCategories.find((c) => c.id === id);
+    if (!target) throw new Error('Category not found');
+    await cloudWrite('Updating category', () =>
+      supabase.from('categories').update(toRow(data)).eq('id', id)
+    );
+    Object.assign(target, data);
+    saveStore('shever_categories', memoryCategories);
+    return target;
+  },
+
+  async deleteCategory(id: string): Promise<boolean> {
+    await cloudWrite('Deleting category', () =>
+      supabase.from('categories').delete().eq('id', id)
+    );
+    memoryCategories = memoryCategories.filter((c) => c.id !== id);
+    memorySubcategories = memorySubcategories.filter((s) => s.category_id !== id);
+    saveStore('shever_categories', memoryCategories);
+    saveStore('shever_subcategories', memorySubcategories);
+    return true;
+  },
+
+  async createSubcategory(data: Partial<Subcategory>): Promise<Subcategory> {
+    if (!data.category_id) throw new Error('Pick a parent trade first');
+    const sub: Subcategory = {
+      id: newId(),
+      category_id: data.category_id,
+      name: data.name || 'New Equipment Type',
+      code: (data.code || data.name || 'NEW').toUpperCase().slice(0, 12),
+      description: data.description,
+      created_at: new Date().toISOString(),
+    };
+    await cloudWrite('Creating subcategory', () =>
+      supabase.from('subcategories').insert(toRow(sub))
+    );
+    memorySubcategories.push(sub);
+    saveStore('shever_subcategories', memorySubcategories);
+    return sub;
+  },
+
+  async updateSubcategory(id: string, data: Partial<Subcategory>): Promise<Subcategory> {
+    const target = memorySubcategories.find((s) => s.id === id);
+    if (!target) throw new Error('Subcategory not found');
+    await cloudWrite('Updating subcategory', () =>
+      supabase.from('subcategories').update(toRow(data)).eq('id', id)
+    );
+    Object.assign(target, data);
+    saveStore('shever_subcategories', memorySubcategories);
+    return target;
+  },
+
+  async deleteSubcategory(id: string): Promise<boolean> {
+    await cloudWrite('Deleting subcategory', () =>
+      supabase.from('subcategories').delete().eq('id', id)
+    );
+    memorySubcategories = memorySubcategories.filter((s) => s.id !== id);
+    saveStore('shever_subcategories', memorySubcategories);
+    return true;
+  },
+
+  // ============================================================================
+  // PPM CHECKLISTS
+  // ============================================================================
+  async getPPMChecklists(): Promise<PPMChecklist[]> {
+    const cloud = await cloudRead<PPMChecklist>(
+      'ppm_checklists',
+      (q) => q.order('title'),
+      'shever_ppm_checklists'
+    );
+    if (cloud) memoryChecklists = cloud;
+    const items = await this.getPPMChecklistItems();
+    return (cloud || memoryChecklists).map((c) => ({
+      ...c,
+      category: memoryCategories.find((cat) => cat.id === c.category_id),
+      items: items
+        .filter((i) => i.checklist_id === c.id)
+        .sort((a, b) => a.item_order - b.item_order),
+    }));
+  },
+
+  async getPPMChecklistItems(): Promise<PPMChecklistItem[]> {
+    const cloud = await cloudRead<PPMChecklistItem>(
+      'ppm_checklist_items',
+      (q) => q.order('item_order'),
+      'shever_ppm_checklist_items'
+    );
+    if (cloud) memoryChecklistItems = cloud;
+    return cloud || memoryChecklistItems;
+  },
+
+  async createPPMChecklist(data: Partial<PPMChecklist>): Promise<PPMChecklist> {
+    const checklist: PPMChecklist = {
+      id: newId(),
+      title: data.title || 'New Inspection Checklist',
+      category_id: data.category_id || memoryCategories[0]?.id,
+      description: data.description,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    };
+    await cloudWrite('Creating checklist', () =>
+      supabase.from('ppm_checklists').insert(toRow(checklist))
+    );
+    memoryChecklists.unshift(checklist);
+    saveStore('shever_ppm_checklists', memoryChecklists);
+    return checklist;
+  },
+
+  async updatePPMChecklist(id: string, data: Partial<PPMChecklist>): Promise<PPMChecklist> {
+    const target = memoryChecklists.find((c) => c.id === id);
+    if (!target) throw new Error('Checklist not found');
+    await cloudWrite('Updating checklist', () =>
+      supabase
+        .from('ppm_checklists')
+        .update(toRow({ ...data, updated_at: new Date().toISOString() }))
+        .eq('id', id)
+    );
+    Object.assign(target, data);
+    saveStore('shever_ppm_checklists', memoryChecklists);
+    return target;
+  },
+
+  async deletePPMChecklist(id: string): Promise<boolean> {
+    await cloudWrite('Deleting checklist', () =>
+      supabase.from('ppm_checklists').delete().eq('id', id)
+    );
+    memoryChecklists = memoryChecklists.filter((c) => c.id !== id);
+    memoryChecklistItems = memoryChecklistItems.filter((i) => i.checklist_id !== id);
+    saveStore('shever_ppm_checklists', memoryChecklists);
+    saveStore('shever_ppm_checklist_items', memoryChecklistItems);
+    return true;
+  },
+
+  async createPPMChecklistItem(data: Partial<PPMChecklistItem>): Promise<PPMChecklistItem> {
+    if (!data.checklist_id) throw new Error('Checklist is required');
+    const siblings = memoryChecklistItems.filter((i) => i.checklist_id === data.checklist_id);
+    const item: PPMChecklistItem = {
+      id: newId(),
+      checklist_id: data.checklist_id,
+      item_order: data.item_order ?? siblings.length + 1,
+      task_description: data.task_description || 'New inspection task',
+      field_type: data.field_type || 'pass_fail',
+      unit_of_measure: data.unit_of_measure,
+      min_value: data.min_value,
+      max_value: data.max_value,
+      is_mandatory: data.is_mandatory ?? true,
+      dropdown_options: data.dropdown_options || [],
+    };
+    await cloudWrite('Adding checklist task', () =>
+      supabase.from('ppm_checklist_items').insert(toRow(item))
+    );
+    memoryChecklistItems.push(item);
+    saveStore('shever_ppm_checklist_items', memoryChecklistItems);
+    return item;
+  },
+
+  async updatePPMChecklistItem(
+    id: string,
+    data: Partial<PPMChecklistItem>
+  ): Promise<PPMChecklistItem> {
+    const target = memoryChecklistItems.find((i) => i.id === id);
+    if (!target) throw new Error('Task not found');
+    await cloudWrite('Updating checklist task', () =>
+      supabase.from('ppm_checklist_items').update(toRow(data)).eq('id', id)
+    );
+    Object.assign(target, data);
+    saveStore('shever_ppm_checklist_items', memoryChecklistItems);
+    return target;
+  },
+
+  async deletePPMChecklistItem(id: string): Promise<boolean> {
+    await cloudWrite('Removing checklist task', () =>
+      supabase.from('ppm_checklist_items').delete().eq('id', id)
+    );
+    memoryChecklistItems = memoryChecklistItems.filter((i) => i.id !== id);
+    saveStore('shever_ppm_checklist_items', memoryChecklistItems);
+    return true;
+  },
+
+  // ============================================================================
+  // PHOTO UPLOAD (Supabase Storage)
+  // ============================================================================
+  /**
+   * Uploads the file to the `work-order-photos` bucket and records the row.
+   * Previously photos could only be attached by URL, so nothing was ever
+   * actually stored.
+   */
+  async uploadWorkOrderPhoto(
+    workOrderId: string,
+    file: File,
+    photoType: 'before' | 'progress' | 'after',
+    caption?: string
+  ): Promise<WorkOrder | undefined> {
+    if (!isSupabaseConfigured()) {
+      throw new Error(
+        'Photo upload needs a cloud connection. Set VITE_SUPABASE_URL and ' +
+          'VITE_SUPABASE_ANON_KEY, then redeploy.'
+      );
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error(`That photo is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 10 MB.`);
+    }
+    if (!file.type.startsWith('image/')) {
+      throw new Error('Only image files can be attached as photos.');
+    }
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${workOrderId}/${photoType}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+
+    if (uploadError) {
+      const msg = /bucket/i.test(uploadError.message)
+        ? `Storage bucket "${PHOTO_BUCKET}" is missing. Run database/07_storage_and_sla.sql in Supabase.`
+        : `Photo upload failed: ${uploadError.message}`;
+      cloudSync.set(false, msg);
+      throw new Error(msg);
+    }
+
+    const { data: pub } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+    return this.addWorkOrderPhoto(workOrderId, photoType, pub.publicUrl, caption);
+  },
+
+  async deleteWorkOrderPhoto(workOrderId: string, photoId: string): Promise<boolean> {
+    await cloudWrite('Removing photo', () =>
+      supabase.from('work_order_photos').delete().eq('id', photoId)
+    );
+    const wo = memoryWorkOrders.find((w) => w.id === workOrderId);
+    if (wo?.photos) wo.photos = wo.photos.filter((p) => p.id !== photoId);
+    saveStore('shever_work_orders', memoryWorkOrders);
+    return true;
+  },
+
+  // ============================================================================
+  // SLA ESCALATION
+  // ============================================================================
+  /**
+   * Flags work orders whose resolution deadline has passed. `resolution_due_at`
+   * was stored but nothing ever acted on it, so breaches went unnoticed.
+   * Returns the ones newly marked so the caller can notify.
+   */
+  async escalateBreachedWorkOrders(): Promise<WorkOrder[]> {
+    const now = new Date();
+    const open = memoryWorkOrders.filter(
+      (w) =>
+        !['Completed', 'Closed', 'Cancelled'].includes(w.status) &&
+        w.resolution_due_at &&
+        new Date(w.resolution_due_at) < now &&
+        !w.is_overdue
+    );
+    if (open.length === 0) return [];
+
+    const ids = open.map((w) => w.id);
+    await cloudWrite('Flagging SLA breaches', () =>
+      supabase
+        .from('work_orders')
+        .update({ is_overdue: true, updated_at: now.toISOString() })
+        .in('id', ids)
+    );
+
+    open.forEach((w) => {
+      w.is_overdue = true;
+    });
+    saveStore('shever_work_orders', memoryWorkOrders);
+    return open;
   },
 };
 
