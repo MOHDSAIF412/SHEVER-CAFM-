@@ -58,7 +58,7 @@ export const Login: React.FC = () => {
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <img
-              src="/shever-logo-Cg3sbF_E.png"
+              src="/shever-logo.png"
               alt="Shever Technical"
               className="w-10 h-10 rounded-xl bg-white/10 p-1.5 border border-white/20 shadow-md object-contain"
               onError={(e) => {
@@ -143,7 +143,7 @@ export const Login: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:hidden">
             <img
-              src="/shever-logo-Cg3sbF_E.png"
+              src="/shever-logo.png"
               alt="Shever Technical"
               className="w-8 h-8 rounded-lg object-contain"
               onError={(e) => {
