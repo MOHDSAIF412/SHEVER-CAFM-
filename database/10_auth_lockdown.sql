@@ -171,3 +171,16 @@ CREATE POLICY "cafm photos insertable" ON storage.objects FOR INSERT TO authenti
     WITH CHECK (bucket_id = 'work-order-photos' AND public.cafm_role() IS NOT NULL);
 CREATE POLICY "cafm photos deletable" ON storage.objects FOR DELETE TO authenticated
     USING (bucket_id = 'work-order-photos' AND public.cafm_has_role('admin'));
+
+-- ------------------------------------------------------------------------------
+-- 6. Function hardening (Supabase security advisor)
+-- ------------------------------------------------------------------------------
+-- Internal functions are run by triggers only, never called over the API.
+ALTER FUNCTION cafm_trg_recalc_costing() SECURITY DEFINER;
+REVOKE ALL ON FUNCTION cafm_trg_recalc_costing() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_recalc_wo_costing(TEXT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_link_profile_to_auth_user() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION flag_sla_breaches() FROM PUBLIC, anon;
+ALTER FUNCTION apply_sla_targets() SET search_path = public;
+ALTER FUNCTION flag_sla_breaches() SET search_path = public;
+ALTER FUNCTION block_mass_delete() SET search_path = public;
