@@ -212,7 +212,7 @@ export const Dashboard: React.FC = () => {
   const inProgressCount = filteredWorkOrders.filter((w) => w.status === 'In Progress').length;
   const completedCount = filteredWorkOrders.filter((w) => w.status === 'Completed').length;
   const closedCount = filteredWorkOrders.filter((w) => w.status === 'Closed').length;
-  const pendingApprovalCount = filteredWorkOrders.filter((w) => w.status === 'Pending Approval').length;
+  const pendingApprovalCount = filteredWorkOrders.filter((w) => ['Pending Approval', 'Work Done'].includes(w.status)).length;
 
   const totalClosedOrCompleted = completedCount + closedCount;
   const totalFilteredCount = filteredWorkOrders.length;
@@ -503,7 +503,7 @@ export const Dashboard: React.FC = () => {
 
   // Priority Attention Items from filtered list
   const emergencyWos = filteredWorkOrders.filter((w) => w.priority === 'Emergency' && !['Completed', 'Closed'].includes(w.status));
-  const pendingApprovalWos = filteredWorkOrders.filter((w) => w.status === 'Pending Approval');
+  const pendingApprovalWos = filteredWorkOrders.filter((w) => ['Pending Approval', 'Work Done'].includes(w.status));
   const overduePPMItems = filteredPPMs.filter((p) => p.status === 'Overdue' || p.is_overdue);
   const totalAttentionCount = emergencyWos.length + overduePPMItems.length + pendingApprovalWos.length;
 
@@ -636,7 +636,7 @@ export const Dashboard: React.FC = () => {
             options: ['Emergency', 'High', 'Medium', 'Low'].map((x) => ({ id: x, label: x })) },
           { value: selectedStatus, onChange: (v: string) => setSelectedStatus(v as WorkOrderStatus | 'ALL'),
             all: 'All Status',
-            options: ['New', 'Assigned', 'Accepted', 'In Progress', 'On Hold', 'Pending Approval', 'Completed', 'Closed', 'Cancelled'].map((x) => ({ id: x, label: x })) },
+            options: ['New', 'Assigned', 'In Progress', 'On Hold', 'Work Done', 'Completed', 'Closed', 'Cancelled'].map((x) => ({ id: x, label: x })) },
           { value: datePreset, onChange: setDatePreset, all: 'All Time',
             options: [
               { id: 'TODAY', label: 'Today' },

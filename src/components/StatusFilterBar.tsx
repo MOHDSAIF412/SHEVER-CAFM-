@@ -1,3 +1,4 @@
+import { normaliseStatus } from '../utils/woFlow';
 import React from 'react';
 import { WorkOrder, WorkOrderStatus } from '../types';
 
@@ -19,10 +20,9 @@ interface StatusFilterBarProps {
 const STATUSES: { key: WorkOrderStatus; label: string; badge: string }[] = [
   { key: 'New', label: 'Unassigned', badge: 'bg-rose-600' },
   { key: 'Assigned', label: 'Assigned', badge: 'bg-teal-700' },
-  { key: 'Accepted', label: 'Accepted', badge: 'bg-purple-600' },
   { key: 'In Progress', label: 'In Progress', badge: 'bg-sky-500' },
   { key: 'On Hold', label: 'On Hold', badge: 'bg-orange-800' },
-  { key: 'Pending Approval', label: 'Pending Approval', badge: 'bg-amber-500' },
+  { key: 'Work Done', label: 'Work Done', badge: 'bg-violet-500' },
   { key: 'Completed', label: 'Completed', badge: 'bg-emerald-500' },
   { key: 'Closed', label: 'Closed', badge: 'bg-emerald-800' },
   { key: 'Cancelled', label: 'Cancelled', badge: 'bg-slate-500' },
@@ -37,7 +37,7 @@ export const StatusFilterBar: React.FC<StatusFilterBarProps> = ({
   onChange,
 }) => {
   const countOf = (status: WorkOrderStatus) =>
-    workOrders.filter((w) => w.status === status).length;
+    workOrders.filter((w) => normaliseStatus(w.status) === status).length;
 
   const Pill: React.FC<{
     active: boolean;

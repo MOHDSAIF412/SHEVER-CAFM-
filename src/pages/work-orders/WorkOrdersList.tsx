@@ -1,585 +1,349 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  ClipboardList,
-  Search,
-  Filter,
-  Plus,
-  Flame,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  FileSpreadsheet,
-  Columns,
-  CheckSquare,
-  Square,
-  ChevronLeft,
-  ChevronRight,
-  Check,
-  Trash2,
-  ShieldAlert,
+  AlertTriangle, CheckCheck, ChevronLeft, ChevronRight, Clock, FileSpreadsheet, Loader2, MapPin, PauseCircle,
+  Plus, Search, Timer, User, X,
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
-import { SlaCountdown } from '../../components/SlaCountdown';
-import { WorkOrder, Building as BuildingType, Category, UserProfile } from '../../types';
+import { ServiceMatrix, workOrderService } from '../../api/workOrders';
+import { Hierarchy, hierarchyService } from '../../api/hierarchy';
 import { useAuth } from '../../context/AuthContext';
+import { SlaCountdown } from '../../components/SlaCountdown';
 import { exportWorkOrdersToExcel } from '../../utils/excelExporter';
+import { getSlaStatus } from '../../utils/sla';
+import { FLOW, PRIORITY_META, STATUS_META, WO_TYPES, isOpen, normaliseStatus, priorityOf, statusMeta } from '../../utils/woFlow';
+import { SlaPriority, UserProfile, WorkOrder } from '../../types';
+
+const TABS = ['All', ...FLOW.slice(0, 3), 'On Hold', ...FLOW.slice(3), 'Cancelled'];
+const PAGE = 25;
+
+const timeAgo = (iso: string) => {
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 60) return `${Math.max(m, 0)}m ago`;
+  if (m < 1440) return `${Math.round(m / 60)}h ago`;
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+};
 
 export const WorkOrdersList: React.FC = () => {
-  const { isAdmin, isManager } = useAuth();
-  const [searchParams] = useSearchParams();
-  const initialSearch = searchParams.get('search') || '';
-  const initialStatus = searchParams.get('status') || 'ALL';
-  const initialPriority = searchParams.get('priority') || 'ALL';
+  const navigate = useNavigate();
+  const { user, isTechnician, isAdmin, isManager } = useAuth();
+  const [params, setParams] = useSearchParams();
 
-  const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
-  const [filteredWos, setFilteredWos] = useState<WorkOrder[]>([]);
-  const [buildings, setBuildings] = useState<BuildingType[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [technicians, setTechnicians] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [bulkToast, setBulkToast] = useState<string | null>(null);
+  const [wos, setWos] = useState<WorkOrder[] | null>(null);
+  const [matrix, setMatrix] = useState<ServiceMatrix | null>(null);
+  const [h, setH] = useState<Hierarchy | null>(null);
+  const [people, setPeople] = useState<UserProfile[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState('');
 
-  // Deletion modal states
-  const [deletingWo, setDeletingWo] = useState<WorkOrder | null>(null);
-  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const status = params.get('status') || 'All';
+  const query = params.get('q') || params.get('search') || '';
+  const priority = (params.get('priority') || '') as SlaPriority | '';
+  const type = params.get('type') || '';
+  const building = params.get('building') || '';
+  const mine = params.get('mine') === '1' || (isTechnician && params.get('mine') !== '0');
+  const overdueOnly = params.get('overdue') === '1';
+  const page = Number(params.get('page') || 1);
 
-  // Filters
-  const [search, setSearch] = useState(initialSearch);
-  const [statusFilter, setStatusFilter] = useState(initialStatus);
-  const [priorityFilter, setPriorityFilter] = useState(initialPriority);
-  const [buildingFilter, setBuildingFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const setParam = (k: string, v: string | null) =>
+    setParams((p) => {
+      const n = new URLSearchParams(p);
+      if (v === null || v === '') n.delete(k);
+      else n.set(k, v);
+      if (k !== 'page') n.delete('page');
+      return n;
+    });
 
-  // Bulk Selection State
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 8;
+  const load = async () => {
+    const [list, m, hier, users] = await Promise.all([
+      cafmDataService.getWorkOrders(),
+      workOrderService.serviceMatrix(),
+      hierarchyService.loadAll(),
+      cafmDataService.getUsers(),
+    ]);
+    setWos(list);
+    setMatrix(m);
+    setH(hier);
+    setPeople(users);
+  };
 
   useEffect(() => {
-    const s = searchParams.get('status');
-    if (s) setStatusFilter(s);
-  }, [searchParams]);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [wos, blds, cats, techs] = await Promise.all([
-          cafmDataService.getWorkOrders(),
-          cafmDataService.getBuildings(),
-          cafmDataService.getCategories(),
-          cafmDataService.getTechnicians(),
-        ]);
-        setWorkOrders(wos);
-        setBuildings(blds);
-        setCategories(cats);
-        setTechnicians(techs);
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
   }, []);
 
-  useEffect(() => {
-    let list = [...workOrders];
+  const jobName = (wo: WorkOrder) => matrix?.jobs.find((j) => j.id === wo.job_type_id)?.name;
+  const roomName = (wo: WorkOrder) => h?.rooms.find((r) => r.id === wo.location_id)?.name;
+  const buildingName = (wo: WorkOrder) => h?.buildings.find((b) => b.id === wo.building_id)?.name;
+  const techName = (wo: WorkOrder) => people.find((p) => p.id === wo.assigned_technician_id)?.full_name;
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(
-        (w) =>
-          w.wo_number.toLowerCase().includes(q) ||
-          w.problem_description.toLowerCase().includes(q) ||
-          w.building?.name?.toLowerCase().includes(q) ||
-          w.location?.name?.toLowerCase().includes(q) ||
-          w.asset?.name?.toLowerCase().includes(q) ||
-          w.assigned_technician?.full_name?.toLowerCase().includes(q)
-      );
-    }
-
-    if (statusFilter !== 'ALL') {
-      if (statusFilter === 'Overdue') {
-        list = list.filter((w) => w.is_overdue);
-      } else {
-        list = list.filter((w) => w.status === statusFilter);
+  // Everything except the status tab, so tab counts reflect the other filters.
+  const base = useMemo(() => {
+    if (!wos) return [];
+    const q = query.trim().toLowerCase();
+    return wos.filter((wo) => {
+      if (mine && wo.assigned_technician_id !== user?.id) return false;
+      if (priority && priorityOf(wo) !== priority) return false;
+      if (type && (wo.wo_type || 'Reactive') !== type) return false;
+      if (building && wo.building_id !== building) return false;
+      if (overdueOnly && !(isOpen(wo.status) && getSlaStatus(wo).state === 'breached')) return false;
+      if (q) {
+        const hay = [wo.wo_number, wo.problem_description, jobName(wo), roomName(wo), buildingName(wo), techName(wo), wo.asset?.asset_number]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
       }
-    }
+      return true;
+    });
+  }, [wos, query, priority, type, building, mine, overdueOnly, matrix, h, people, user]);
 
-    if (priorityFilter !== 'ALL') {
-      list = list.filter((w) => w.priority === priorityFilter);
-    }
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { All: base.length };
+    base.forEach((w) => {
+      const s = normaliseStatus(w.status);
+      c[s] = (c[s] || 0) + 1;
+    });
+    return c;
+  }, [base]);
 
-    if (buildingFilter !== 'ALL') {
-      list = list.filter((w) => w.building_id === buildingFilter);
-    }
+  const rows = status === 'All' ? base : base.filter((w) => normaliseStatus(w.status) === status);
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  const shown = rows.slice((page - 1) * PAGE, page * PAGE);
 
-    if (categoryFilter !== 'ALL') {
-      list = list.filter((w) => w.category_id === categoryFilter);
-    }
+  // KPI strip is always across all jobs this user can see.
+  const kpi = useMemo(() => {
+    const visible = (wos || []).filter((w) => !isTechnician || w.assigned_technician_id === user?.id);
+    const open = visible.filter((w) => isOpen(w.status));
+    const overdue = open.filter((w) => getSlaStatus(w).state === 'breached');
+    const atRisk = open.filter((w) => ['warning', 'critical'].includes(getSlaStatus(w).state));
+    return {
+      open: open.length,
+      overdue: overdue.length,
+      atRisk: atRisk.length,
+      hold: visible.filter((w) => normaliseStatus(w.status) === 'On Hold').length,
+      verify: visible.filter((w) => normaliseStatus(w.status) === 'Work Done').length,
+    };
+  }, [wos, isTechnician, user]);
 
-    setFilteredWos(list);
-    setCurrentPage(1);
-  }, [search, statusFilter, priorityFilter, buildingFilter, categoryFilter, workOrders]);
+  const canBulkClose = isAdmin || isManager;
+  const closable = shown.filter((w) => normaliseStatus(w.status) === 'Completed');
+  const toggle = (id: string) =>
+    setSelected((s) => {
+      const n = new Set(s);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
 
-  // Bulk Selection Handlers
-  const handleSelectAll = () => {
-    if (selectedIds.length === filteredWos.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredWos.map((w) => w.id));
+  const bulkClose = async () => {
+    if (!selected.size) return;
+    setBusy(true);
+    try {
+      for (const id of selected) {
+        const wo = wos?.find((w) => w.id === id);
+        if (wo) await workOrderService.act(wo, 'close');
+      }
+      setToast(`${selected.size} job(s) closed.`);
+      setSelected(new Set());
+      await load();
+    } catch (e: any) {
+      setToast(e?.message || 'Could not close the jobs.');
+    } finally {
+      setBusy(false);
+      setTimeout(() => setToast(''), 4000);
     }
   };
 
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+  if (!wos) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading work orders…
+      </div>
     );
-  };
-
-  const handleBulkStatusChange = async (newStatus: WorkOrder['status']) => {
-    const count = selectedIds.length;
-    for (const id of selectedIds) {
-      await cafmDataService.updateWorkOrderStatus(id, newStatus, {
-        work_performed: newStatus === 'Closed' ? 'Bulk closed and approved by Administrator.' : undefined,
-      });
-    }
-    const fresh = await cafmDataService.getWorkOrders();
-    setWorkOrders(fresh);
-    setSelectedIds([]);
-    setBulkToast(`✅ Admin Action: ${count} work orders successfully changed to status "${newStatus}".`);
-    setTimeout(() => setBulkToast(null), 4500);
-  };
-
-  const handleDeleteSingle = async () => {
-    if (!deletingWo) return;
-    await cafmDataService.deleteWorkOrder(deletingWo.id);
-    const fresh = await cafmDataService.getWorkOrders();
-    setWorkOrders(fresh);
-    setBulkToast(`🗑️ Work order ${deletingWo.wo_number} deleted successfully.`);
-    setDeletingWo(null);
-    setTimeout(() => setBulkToast(null), 4500);
-  };
-
-  const handleBulkDelete = async () => {
-    const count = selectedIds.length;
-    for (const id of selectedIds) {
-      await cafmDataService.deleteWorkOrder(id);
-    }
-    const fresh = await cafmDataService.getWorkOrders();
-    setWorkOrders(fresh);
-    setSelectedIds([]);
-    setShowBulkDeleteConfirm(false);
-    setBulkToast(`🗑️ Admin Action: ${count} work orders deleted successfully.`);
-    setTimeout(() => setBulkToast(null), 4500);
-  };
-
-  // Pagination
-  const totalPages = Math.ceil(filteredWos.length / itemsPerPage) || 1;
-  const paginatedWos = filteredWos.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  }
 
   return (
-    <div className="space-y-6 relative">
-      {/* Toast Notification Banner */}
-      {bulkToast && (
-        <div className="fixed top-6 right-6 z-50 p-4 bg-slate-900 text-white border border-teal-500 rounded-2xl shadow-2xl flex items-center space-x-3 animate-in slide-in-from-top duration-200">
-          <CheckCircle2 className="w-5 h-5 text-teal-400 shrink-0" />
-          <div className="text-xs font-semibold">{bulkToast}</div>
-          <button onClick={() => setBulkToast(null)} className="text-slate-400 hover:text-white text-xs font-bold pl-2">
-            ✕
-          </button>
-        </div>
-      )}
-
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-              Reactive Work Orders Ledger
-            </h1>
-            <span className="px-2 py-0.5 rounded-full text-xs font-extrabold bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-400 border border-teal-200 dark:border-teal-800">
-              {filteredWos.length} Requests
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Real-time ticket dispatch, SLA deadline countdowns, and corrective job lifecycle
-          </p>
+          <h1 className="text-lg font-bold text-ocs-blue dark:text-white">Work Orders</h1>
+          <p className="text-xs text-slate-500">New → Assigned → In Progress → Work Done → Completed → Closed</p>
         </div>
-
-        <div className="flex items-center gap-2">
+        <div className="flex gap-2">
           <button
-            onClick={() => exportWorkOrdersToExcel(filteredWos)}
-            className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
+            onClick={() => exportWorkOrdersToExcel(rows, `Work_Orders_${new Date().toISOString().slice(0, 10)}.xlsx`)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Export Excel</span>
+            <FileSpreadsheet className="h-4 w-4" /> Export
           </button>
-          <Link
-            to="/work-orders/new"
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create Work Order</span>
+          <Link to="/work-orders/new" className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-700">
+            <Plus className="h-4 w-4" /> New work order
           </Link>
         </div>
       </div>
 
-      {/* Multi-Parameter Filter Toolbar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by WO #, description, building, asset or technician..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:ring-1 focus:ring-teal-500 focus:outline-none"
-            />
-          </div>
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <Kpi label={isTechnician ? 'My open jobs' : 'Open jobs'} value={kpi.open} icon={Clock} tone="text-ocs-blue dark:text-white" onClick={() => setParam('status', null)} />
+        <Kpi label="Overdue" value={kpi.overdue} icon={AlertTriangle} tone="text-ocs-red" onClick={() => setParam('overdue', overdueOnly ? null : '1')} active={overdueOnly} />
+        <Kpi label="At risk (75%+ used)" value={kpi.atRisk} icon={Timer} tone="text-orange-500" />
+        <Kpi label="On hold" value={kpi.hold} icon={PauseCircle} tone="text-sky-500" onClick={() => setParam('status', 'On Hold')} />
+        <Kpi label="To verify" value={kpi.verify} icon={CheckCheck} tone="text-violet-500" onClick={() => setParam('status', 'Work Done')} />
+      </div>
 
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="New">New</option>
-            <option value="Assigned">Assigned</option>
-            <option value="Accepted">Accepted</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Pending Approval">Pending Approval</option>
-            <option value="Completed">Completed</option>
-            <option value="Closed">Closed</option>
-            <option value="Overdue">⚠️ Overdue / SLA Breached</option>
-          </select>
-
-          {/* Priority Filter */}
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
-          >
-            <option value="ALL">All Priorities</option>
-            <option value="Emergency">🔴 Emergency</option>
-            <option value="High">🟠 High</option>
-            <option value="Medium">🟡 Medium</option>
-            <option value="Low">🟢 Low</option>
-          </select>
-
-          {/* Building Filter */}
-          <select
-            value={buildingFilter}
-            onChange={(e) => setBuildingFilter(e.target.value)}
-            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
-          >
-            <option value="ALL">All Buildings</option>
-            {buildings.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-
-          {/* Trade Category */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="p-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none"
-          >
-            <option value="ALL">All Trade Categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+      <div className="enterprise-card overflow-hidden">
+        {/* Status tabs */}
+        <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 pt-2 dark:border-slate-800">
+          {TABS.map((t) => {
+            const active = status === t;
+            const meta = STATUS_META[t];
+            return (
+              <button
+                key={t}
+                onClick={() => setParam('status', t === 'All' ? null : t)}
+                className={`flex shrink-0 items-center gap-1.5 border-b-2 px-3 py-2 text-xs font-semibold transition-colors ${
+                  active ? 'border-orange-500 text-ocs-blue dark:text-white' : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                {meta && <span className={`h-2 w-2 rounded-full ${meta.dot}`} />}
+                {t}
+                <span className={`rounded-full px-1.5 text-[10px] ${active ? 'bg-ocs-blue text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>{counts[t] || 0}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {/* Bulk Action Bar (when rows are selected) */}
-        {selectedIds.length > 0 && (
-          <div className="p-2.5 bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-800 rounded-xl flex items-center justify-between text-xs animate-in fade-in duration-100 flex-wrap gap-2">
-            <span className="font-bold text-teal-900 dark:text-teal-200 flex items-center space-x-1.5">
-              <span className="w-2 h-2 rounded-full bg-teal-500 animate-ping"></span>
-              <span>{selectedIds.length} work orders selected for bulk action</span>
-            </span>
-            <div className="flex items-center space-x-2 flex-wrap">
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-3 dark:border-slate-800">
+          <div className="relative min-w-[220px] flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+            <input value={query} onChange={(e) => setParam('q', e.target.value)} placeholder="Search WO no., job, room, building, technician…" className="enterprise-input pl-8" />
+          </div>
+          <div className="flex rounded-lg border border-slate-200 p-0.5 dark:border-slate-700">
+            {(['P1', 'P2', 'P3', 'P4'] as SlaPriority[]).map((p) => (
               <button
-                onClick={() => handleBulkStatusChange('In Progress')}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm"
+                key={p}
+                onClick={() => setParam('priority', priority === p ? null : p)}
+                title={PRIORITY_META[p].name}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-bold ${priority === p ? PRIORITY_META[p].chip : 'text-slate-500'}`}
               >
-                Mark In Progress
+                {p}
               </button>
-              <button
-                onClick={() => handleBulkStatusChange('Completed')}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold shadow-sm"
-              >
-                Mark Completed
-              </button>
-              {/* Admin Option to Close Bulk Work Orders */}
-              {isAdmin && (
-                <button
-                  onClick={() => handleBulkStatusChange('Closed')}
-                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg font-bold shadow-sm flex items-center space-x-1 border border-teal-500/40"
-                >
-                  <Check className="w-3.5 h-3.5 text-teal-400" />
-                  <span>Bulk Close (Admin)</span>
-                </button>
-              )}
-              {/* Admin Option to Bulk Delete Work Orders */}
-              {isAdmin && (
-                <button
-                  onClick={() => setShowBulkDeleteConfirm(true)}
-                  className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shadow-sm flex items-center space-x-1"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Bulk Delete (Admin)</span>
-                </button>
-              )}
-              <button
-                onClick={() => setSelectedIds([])}
-                className="px-2.5 py-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-semibold"
-              >
-                Deselect
-              </button>
-            </div>
+            ))}
+          </div>
+          <select value={type} onChange={(e) => setParam('type', e.target.value)} className="enterprise-input w-auto">
+            <option value="">All types</option>
+            {WO_TYPES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+          <select value={building} onChange={(e) => setParam('building', e.target.value)} className="enterprise-input w-auto max-w-[200px]">
+            <option value="">All buildings</option>
+            {h?.buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+            <input type="checkbox" checked={mine} onChange={(e) => setParam('mine', e.target.checked ? '1' : '0')} /> My jobs
+          </label>
+          {(query || priority || type || building || overdueOnly) && (
+            <button onClick={() => setParams(status !== 'All' ? { status } : {})} className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-slate-800">
+              <X className="h-3.5 w-3.5" /> Clear
+            </button>
+          )}
+        </div>
+
+        {canBulkClose && selected.size > 0 && (
+          <div className="flex items-center justify-between bg-teal-50 px-4 py-2 text-xs dark:bg-teal-500/10">
+            <span className="font-semibold text-teal-800 dark:text-teal-200">{selected.size} completed job(s) selected</span>
+            <button onClick={bulkClose} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-ocs-blue px-3 py-1.5 font-semibold text-white disabled:opacity-60">
+              {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Close selected
+            </button>
           </div>
         )}
-      </div>
 
-      {/* Main DataTable */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200/80 dark:border-slate-800">
-              <tr>
-                <th className="px-4 py-3 w-8">
-                  <button onClick={handleSelectAll} className="flex items-center text-slate-400 hover:text-teal-600">
-                    {selectedIds.length === filteredWos.length && filteredWos.length > 0 ? (
-                      <CheckSquare className="w-4 h-4 text-teal-600" />
+        {/* Rows */}
+        {shown.length === 0 ? (
+          <div className="py-16 text-center text-sm text-slate-500">No work orders match.</div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {shown.map((wo) => {
+              const p = priorityOf(wo);
+              const sm = statusMeta(wo.status);
+              const title = jobName(wo) || wo.problem_description?.split('\n')[0];
+              const where = [buildingName(wo), roomName(wo)].filter(Boolean).join(' · ');
+              const tech = techName(wo);
+              const canSelect = canBulkClose && normaliseStatus(wo.status) === 'Completed';
+              return (
+                <div
+                  key={wo.id}
+                  onClick={() => navigate(`/work-orders/${wo.id}`)}
+                  className="grid cursor-pointer grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1 px-4 py-3 hover:bg-slate-50 md:grid-cols-[auto_minmax(0,2.2fr)_minmax(0,1.4fr)_110px_120px_minmax(0,1fr)] dark:hover:bg-slate-800/40"
+                >
+                  <div onClick={(e) => e.stopPropagation()} className="flex w-5 justify-center">
+                    {canSelect ? (
+                      <input type="checkbox" checked={selected.has(wo.id)} onChange={() => toggle(wo.id)} />
                     ) : (
-                      <Square className="w-4 h-4" />
+                      <span className={`h-2.5 w-2.5 rounded-full ${p === 'P1' ? 'bg-ocs-red' : p === 'P2' ? 'bg-orange-500' : p === 'P3' ? 'bg-teal-500' : 'bg-slate-300'}`} />
                     )}
-                  </button>
-                </th>
-                <th className="px-4 py-3">WO Number & Logged Time</th>
-                <th className="px-4 py-3">Priority</th>
-                <th className="px-4 py-3">SLA</th>
-                <th className="px-4 py-3">Trade / Category</th>
-                <th className="px-4 py-3">Facility Location & Asset</th>
-                <th className="px-4 py-3">Problem Description</th>
-                <th className="px-4 py-3">Assigned Tech</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {paginatedWos.map((wo) => {
-                const isSelected = selectedIds.includes(wo.id);
-                const isEmergency = wo.priority === 'Emergency';
-                const isHigh = wo.priority === 'High';
-                return (
-                  <tr
-                    key={wo.id}
-                    className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
-                      isSelected ? 'bg-teal-50/40 dark:bg-teal-950/20' : ''
-                    }`}
-                  >
-                    <td className="px-4 py-3.5">
-                      <button onClick={() => handleToggleSelect(wo.id)} className="text-slate-400 hover:text-teal-600">
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-teal-600" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <Link
-                        to={`/work-orders/${wo.id}`}
-                        className="font-extrabold text-teal-700 dark:text-teal-400 hover:underline block"
-                      >
-                        {wo.wo_number}
-                      </Link>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold block mt-0.5">
-                        🕒 {new Date(wo.created_at).toLocaleDateString()} {new Date(wo.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${
-                          isEmergency
-                            ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
-                            : isHigh
-                            ? 'bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-400 border border-orange-200 dark:border-orange-800'
-                            : wo.priority === 'Medium'
-                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
-                            : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                        }`}
-                      >
-                        {isEmergency && <Flame className="w-3 h-3 mr-1 text-red-600" />}
-                        {wo.priority}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <SlaCountdown workOrder={wo} />
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-700 dark:text-slate-300 font-medium">
-                      {wo.category?.name || 'General'}
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-700 dark:text-slate-300">
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">
-                        {wo.building?.name || 'Main Tower'}
-                      </div>
-                      <div className="text-[11px] text-slate-400 dark:text-slate-500">
-                        {wo.floor?.name} - {wo.asset?.name || wo.location?.name || 'General Area'}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-700 dark:text-slate-300 max-w-xs">
-                      <p className="line-clamp-2 leading-relaxed">{wo.problem_description}</p>
-                    </td>
-                    <td className="px-4 py-3.5 text-slate-600 dark:text-slate-400">
-                      {wo.assigned_technician?.full_name || (
-                        <span className="text-slate-400 dark:text-slate-600 italic">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          wo.status === 'Completed' || wo.status === 'Closed'
-                            ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                            : wo.status === 'In Progress'
-                            ? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
-                            : wo.status === 'Pending Approval'
-                            ? 'bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-400'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        {wo.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-right space-x-1.5 whitespace-nowrap">
-                      <Link
-                        to={`/work-orders/${wo.id}`}
-                        className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-600 rounded-lg text-[11px] font-bold transition-colors inline-block"
-                      >
-                        Manage
-                      </Link>
-                      {isAdmin && (
-                        <button
-                          onClick={() => setDeletingWo(wo)}
-                          className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors inline-flex items-center"
-                          title="Delete Work Order (Admin Only)"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination Toolbar */}
-        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-          <div>
-            Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
-            {Math.min(currentPage * itemsPerPage, filteredWos.length)} of {filteredWos.length} work orders
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="font-mono text-[11px] font-semibold text-slate-500">{wo.wo_number}</span>
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${PRIORITY_META[p].chip}`}>{p}</span>
+                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">{wo.wo_type || 'Reactive'}</span>
+                      {wo.is_chargeable && <span className="rounded bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:bg-orange-500/15 dark:text-orange-300">Chargeable</span>}
+                    </div>
+                    <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</div>
+                  </div>
+                  <div className="col-start-2 min-w-0 text-xs text-slate-500 md:col-start-auto">
+                    <div className="flex items-center gap-1 truncate"><MapPin className="h-3 w-3 shrink-0 text-orange-500" /> {where || '—'}</div>
+                    {wo.asset && <div className="truncate font-mono text-[10px]">{wo.asset.asset_number}</div>}
+                  </div>
+                  <div className="col-start-2 md:col-start-auto">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${sm.pill}`}>{sm.label}</span>
+                  </div>
+                  <div className="col-start-2 md:col-start-auto">
+                    <SlaCountdown workOrder={wo} />
+                  </div>
+                  <div className="col-start-2 flex items-center justify-between gap-2 text-xs text-slate-500 md:col-start-auto">
+                    <span className="flex min-w-0 items-center gap-1 truncate">
+                      <User className="h-3 w-3 shrink-0" /> {tech || <span className="italic text-slate-400">Unassigned</span>}
+                    </span>
+                    <span className="shrink-0 text-[11px]">{timeAgo(wo.created_at)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="px-2.5 py-1 font-bold text-slate-900 dark:text-slate-100">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
+        )}
+
+        {/* Pagination */}
+        <div className="flex items-center justify-between border-t border-slate-100 px-4 py-2 text-xs text-slate-500 dark:border-slate-800">
+          <span>
+            {rows.length} job(s){canBulkClose && closable.length > 0 && selected.size === 0 && ' · tick completed jobs to close them together'}
+          </span>
+          <div className="flex items-center gap-2">
+            <button disabled={page <= 1} onClick={() => setParam('page', String(page - 1))} className="rounded p-1 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
+            <span>{page} / {pages}</span>
+            <button disabled={page >= pages} onClick={() => setParam('page', String(page + 1))} className="rounded p-1 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
           </div>
         </div>
       </div>
 
-      {/* Single Delete Confirmation Modal */}
-      {deletingWo && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center space-x-3 text-rose-600">
-              <ShieldAlert className="w-6 h-6 shrink-0" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Delete Work Order
-              </h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete <strong className="text-slate-900 dark:text-white">{deletingWo.wo_number}</strong>? All associated maintenance history and records for this ticket will be removed.
-            </p>
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeletingWo(null)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteSingle}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow transition-colors"
-              >
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Delete Confirmation Modal */}
-      {showBulkDeleteConfirm && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center space-x-3 text-rose-600">
-              <ShieldAlert className="w-6 h-6 shrink-0" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
-                Delete Multiple Work Orders
-              </h3>
-            </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Are you sure you want to permanently delete all <strong className="text-rose-600">{selectedIds.length}</strong> selected work orders? This action cannot be reversed.
-            </p>
-            <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <button
-                type="button"
-                onClick={() => setShowBulkDeleteConfirm(false)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs shadow transition-colors"
-              >
-                Confirm Bulk Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {toast && <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-ocs-blue px-4 py-3 text-xs font-semibold text-white shadow-lg">{toast}</div>}
     </div>
   );
 };
+
+const Kpi: React.FC<{ label: string; value: number; icon: React.ElementType; tone: string; onClick?: () => void; active?: boolean }> = ({ label, value, icon: Icon, tone, onClick, active }) => (
+  <button
+    onClick={onClick}
+    disabled={!onClick}
+    className={`enterprise-card flex items-center gap-3 p-3 text-left ${onClick ? 'hover:border-teal-300' : 'cursor-default'} ${active ? 'ring-2 ring-ocs-red' : ''}`}
+  >
+    <Icon className={`h-5 w-5 shrink-0 ${tone}`} />
+    <div>
+      <div className={`text-xl font-bold leading-none ${tone}`}>{value}</div>
+      <div className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+    </div>
+  </button>
+);

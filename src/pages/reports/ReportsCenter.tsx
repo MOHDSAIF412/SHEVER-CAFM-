@@ -218,7 +218,7 @@ export const ReportsCenter: React.FC = () => {
               <option value="CLOSED">🔵 Completed & Closed</option>
               <option value="New">New</option>
               <option value="Assigned">Assigned</option>
-              <option value="Pending Approval">Pending Approval</option>
+              <option value="Work Done">Work Done</option>
             </select>
           </div>
 
