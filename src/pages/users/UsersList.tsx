@@ -81,7 +81,7 @@ export const UsersList: React.FC = () => {
           full_name: fullName,
           employee_id: employeeId || `EMP-${users.length + 101}`,
           email,
-          password: password || 'Password123!',
+          password,
           role_id: roleId,
           department,
           phone,
@@ -129,8 +129,8 @@ export const UsersList: React.FC = () => {
     e.preventDefault();
     if (!passwordModalUser) return;
 
-    if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters long.');
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -522,7 +522,7 @@ export const UsersList: React.FC = () => {
                       required
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
+                      placeholder="Minimum 8 characters"
                       className="w-full pl-9 pr-10 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 focus:outline-none"
                     />
                     <button

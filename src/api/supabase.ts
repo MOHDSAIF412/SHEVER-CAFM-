@@ -793,6 +793,32 @@ const cloudRead = async <T>(
   }
 };
 
+/**
+ * Sign-in accounts and passwords are managed by the cafm-admin-users edge
+ * function, which holds the service-role key. The browser's anon key cannot
+ * create logins or set passwords, and the function only obeys an admin.
+ */
+const adminUsers = async <T>(label: string, body: Record<string, unknown>): Promise<T> => {
+  const { data, error } = await supabase.functions.invoke('cafm-admin-users', { body });
+  if (error) {
+    let msg = error.message;
+    try {
+      const detail = await (error as any).context?.json?.();
+      if (detail?.error) msg = detail.error;
+    } catch (e) {}
+    const full = `${label} failed: ${msg}`;
+    cloudSync.set(false, full);
+    throw new Error(full);
+  }
+  if (data?.error) {
+    const full = `${label} failed: ${data.error}`;
+    cloudSync.set(false, full);
+    throw new Error(full);
+  }
+  cloudSync.set(true, null);
+  return data as T;
+};
+
 // ==============================================================================
 // CAFM DATA SERVICE (Unified API with Supabase + Live In-Memory Fallback)
 // ==============================================================================
@@ -1203,20 +1229,17 @@ export const cafmDataService = {
       created_at: new Date().toISOString(),
     };
 
-    // Cloud first: if the profile cannot be saved, the account must not appear
-    // to exist locally either.
-    const saved = await cloudWrite('Creating user', () =>
-      supabase.from('profiles').insert(toRow(newUser)).select().single()
-    );
-    const stored: UserProfile = (saved as UserProfile) || newUser;
-
+    let stored: UserProfile = newUser;
     if (isSupabaseConfigured()) {
-      await cloudWrite('Setting the password', () =>
-        supabase.rpc('app_set_password', {
-          p_user_id: stored.id,
-          p_password: userData.password || 'Password123!',
-        })
-      );
+      // Creates the sign-in account and the profile together, server-side.
+      // An admin must choose the password; there is no default any more.
+      if (!userData.password) throw new Error('Set a password for the new user (at least 8 characters).');
+      const res = await adminUsers<{ profile: UserProfile }>('Creating user', {
+        action: 'create_user',
+        profile: toRow(newUser),
+        password: userData.password,
+      });
+      stored = res.profile || newUser;
     } else {
       // Offline demo mode: the device is the only place the password can live.
       stored.password = userData.password || 'Password123!';
@@ -1276,8 +1299,8 @@ export const cafmDataService = {
   },
 
   async changeUserPassword(id: string, newPassword: string): Promise<boolean> {
-    if (!newPassword || newPassword.length < 6) {
-      throw new Error('Password must be at least 6 characters long.');
+    if (!newPassword || newPassword.length < 8) {
+      throw new Error('Password must be at least 8 characters long.');
     }
 
     if (!isSupabaseConfigured()) {
@@ -1288,11 +1311,9 @@ export const cafmDataService = {
       );
     }
 
-    // Hashed and stored server-side by app_set_password. Throws if it fails,
-    // so the Users screen can never show "password changed" over a no-op.
-    await cloudWrite('Changing the password', () =>
-      supabase.rpc('app_set_password', { p_user_id: id, p_password: newPassword })
-    );
+    // Set in Supabase Auth by the admin edge function. Throws if it fails, so
+    // the Users screen can never show "password changed" over a no-op.
+    await adminUsers('Changing the password', { action: 'set_password', profile_id: id, password: newPassword });
 
     // The plaintext password is never kept on the device any more.
     const target = memoryUsers.find((u) => u.id === id);
@@ -1302,7 +1323,9 @@ export const cafmDataService = {
   },
 
   async deleteUser(id: string): Promise<boolean> {
-    await cloudWrite('Deleting user', () => supabase.from('profiles').delete().eq('id', id));
+    if (isSupabaseConfigured()) {
+      await adminUsers('Deleting user', { action: 'delete_user', profile_id: id });
+    }
     memoryUsers = memoryUsers.filter((u) => u.id !== id);
     saveStore('shever_users_registry', memoryUsers);
     return true;
