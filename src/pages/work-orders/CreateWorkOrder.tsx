@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
 import { ServiceMatrix, workOrderService } from '../../api/workOrders';
+import { Template, checklistService } from '../../api/checklists';
 import { Hierarchy, hierarchyService, roomPath } from '../../api/hierarchy';
 import { useAuth } from '../../context/AuthContext';
 import { formatDuration } from '../../utils/sla';
@@ -34,6 +35,8 @@ export const CreateWorkOrder: React.FC = () => {
   const [policies, setPolicies] = useState<SlaPolicy[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [techs, setTechs] = useState<UserProfile[]>([]);
+  const [checklists, setChecklists] = useState<Template[]>([]);
+  const [checklistId, setChecklistId] = useState('');
 
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [jobTypeId, setJobTypeId] = useState('');
@@ -65,7 +68,9 @@ export const CreateWorkOrder: React.FC = () => {
       workOrderService.slaPolicies(),
       cafmDataService.getCategories(),
       cafmDataService.getTechnicians(),
-    ]).then(([m, hier, pol, cats, t]) => {
+      checklistService.templates(),
+    ]).then(([m, hier, pol, cats, t, cl]) => {
+      setChecklists(cl.filter((c) => c.is_active && (!c.applies_to || c.applies_to === 'PPM')));
       setMatrix(m);
       setH(hier);
       setPolicies(pol);
@@ -92,6 +97,8 @@ export const CreateWorkOrder: React.FC = () => {
   const pickType = (t: WorkOrderType) => {
     setWoType(t);
     setChargeable(!!WO_TYPES.find((x) => x.id === t)?.chargeable);
+    // Planned maintenance is planned: default it to P4 unless chosen by hand.
+    if (t === 'PPM' && !priorityTouched) setPriority('P4');
   };
 
   const jobsShown = useMemo(() => {
@@ -139,6 +146,7 @@ export const CreateWorkOrder: React.FC = () => {
     setError('');
     if (!description.trim() && !job) return setError('Choose what is wrong, or describe the problem.');
     if (!room || !floor || !building) return setError('Choose the room where the problem is.');
+    if (woType === 'PPM' && !checklistId) return setError('Choose the PPM checklist for this job.');
     if (!categoryId) return setError('No categories are set up yet. Add one under Settings → Trades & Types.');
     setSaving(true);
     try {
@@ -158,6 +166,7 @@ export const CreateWorkOrder: React.FC = () => {
           facility_id: building.facility_id || null,
           asset_id: assetId || undefined,
           is_chargeable: chargeable,
+          checklist_id: woType === 'PPM' ? checklistId : null,
           billing_status: 'Not Billable', // moves to 'To Bill' when the job is completed (database trigger)
           reported_by_name: reporter.trim() || user?.full_name,
           reported_by_phone: phone.trim() || undefined,
@@ -311,6 +320,15 @@ export const CreateWorkOrder: React.FC = () => {
               ))}
             </div>
             <p className="text-[11px] text-slate-500">{WO_TYPES.find((t) => t.id === woType)?.hint}</p>
+            {woType === 'PPM' && (
+              <Field label="PPM checklist *">
+                <select value={checklistId} onChange={(e) => setChecklistId(e.target.value)} className="enterprise-input">
+                  <option value="">Choose checklist…</option>
+                  {checklists.map((c) => <option key={c.id} value={c.id}>{c.title} ({c.items.length} items)</option>)}
+                </select>
+                {checklists.length === 0 && <span className="text-[11px] text-slate-400">No PPM checklists yet — create one under PPM Checklists.</span>}
+              </Field>
+            )}
             <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
               <input type="checkbox" checked={chargeable} onChange={(e) => setChargeable(e.target.checked)} />
               Chargeable to the client (labour + materials are billed)
@@ -377,6 +395,7 @@ export const CreateWorkOrder: React.FC = () => {
             <Summary label="Trade" value={serviceType?.name} />
             <Summary label="Where" value={room ? `${building?.name} · ${room.name}` : null} />
             <Summary label="Type" value={`${woType}${chargeable ? ' · chargeable' : ''}`} />
+            {woType === 'PPM' && <Summary label="Checklist" value={checklists.find((c) => c.id === checklistId)?.title} />}
             <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
               <div className="mb-2 flex items-center gap-1.5">
                 <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${PRIORITY_META[priority].chip}`}>{priority}</span>

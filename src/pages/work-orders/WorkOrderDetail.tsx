@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Boxes, Camera, Car, Check, CheckCircle2, Clock, Download, History, Loader2, MapPin, PauseCircle,
+  ArrowLeft, Boxes, Camera, Car, Check, CheckCircle2, ClipboardCheck, Clock, Download, History, Loader2, MapPin, PauseCircle,
   Phone, Plus, ShieldCheck, Star, Trash2, User, Wrench, X, XCircle,
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
@@ -9,6 +9,8 @@ import { ServiceMatrix, workOrderService } from '../../api/workOrders';
 import { Hierarchy, hierarchyService, roomPath } from '../../api/hierarchy';
 import { useAuth } from '../../context/AuthContext';
 import { PhotoUploader } from '../../components/PhotoUploader';
+import { WorkOrderChecklist } from '../../components/WorkOrderChecklist';
+import { Template, checklistProgress, checklistService } from '../../api/checklists';
 import { generateWorkOrderPDF } from '../../utils/pdfGenerator';
 import { ClockResult, formatDuration, slaClock } from '../../utils/sla';
 import {
@@ -16,7 +18,7 @@ import {
 } from '../../utils/woFlow';
 import { SlaPolicy, StatusHistoryEntry, TimeLogEntry, UserProfile, WorkOrder } from '../../types';
 
-type Tab = 'overview' | 'sla' | 'time' | 'photos' | 'history';
+type Tab = 'overview' | 'checklist' | 'sla' | 'time' | 'photos' | 'history';
 type Dialog = null | 'assign' | 'hold' | 'work_done' | 'complete' | 'cancel' | 'send_back' | 'manual_time' | 'delete';
 
 const fmt = (iso?: string | null) =>
@@ -59,6 +61,8 @@ export const WorkOrderDetail: React.FC = () => {
   const [error, setError] = useState('');
   const [now, setNow] = useState(new Date());
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [checklist, setChecklist] = useState<Template | null>(null);
+  const [checkProgress, setCheckProgress] = useState<{ total: number; answered: number; failed: number; missing: { task_description: string }[] } | null>(null);
 
   // Dialog form fields
   const [f, setF] = useState<Record<string, any>>({});
@@ -92,6 +96,14 @@ export const WorkOrderDetail: React.FC = () => {
       setPolicies(pol);
       setTechs(t);
       refreshSide(w.id);
+      // Checklists belong to PPM jobs only.
+      if (w.wo_type === 'PPM' && w.checklist_id) {
+        Promise.all([checklistService.template(w.checklist_id), checklistService.responses(w.id)]).then(([c, rs]) => {
+          if (!c) return;
+          setChecklist(c);
+          setCheckProgress(checklistProgress(c, rs));
+        });
+      }
     })();
     const tick = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(tick);
@@ -153,6 +165,10 @@ export const WorkOrderDetail: React.FC = () => {
         setF({ reason: HOLD_REASONS[0], note: '' });
         return setDialog('hold');
       case 'work_done':
+        if (checklist && checkProgress && checkProgress.missing.length > 0) {
+          setTab('checklist');
+          return setError(`Finish the checklist first: ${checkProgress.missing.length} required item(s) left (e.g. "${checkProgress.missing[0].task_description}").`);
+        }
         setF({ work: wo.work_performed || '', cause: wo.root_cause || '', action: wo.action_taken || '' });
         return setDialog('work_done');
       case 'complete':
@@ -296,6 +312,7 @@ export const WorkOrderDetail: React.FC = () => {
           <div className="flex gap-1 overflow-x-auto border-b border-slate-100 px-3 dark:border-slate-800">
             {([
               ['overview', 'Overview', Boxes],
+              ...(checklist ? [['checklist', `Checklist${checkProgress ? ` ${checkProgress.answered}/${checkProgress.total}` : ''}`, ClipboardCheck]] : []),
               ['sla', 'SLA', Clock],
               ['time', 'Time log', Car],
               ['photos', `Photos${wo.photos?.length ? ` (${wo.photos.length})` : ''}`, Camera],
@@ -351,6 +368,17 @@ export const WorkOrderDetail: React.FC = () => {
 
                 {wo.remarks && <Block title="Remarks"><p className="text-xs text-slate-700 dark:text-slate-300">{wo.remarks}</p></Block>}
               </div>
+            )}
+
+            {tab === 'checklist' && checklist && (
+              <WorkOrderChecklist
+                wo={wo}
+                template={checklist}
+                editable={status === 'In Progress' && (lead || wo.assigned_technician_id === user?.id)}
+                policies={policies}
+                userName={user?.full_name}
+                onProgress={setCheckProgress}
+              />
             )}
 
             {tab === 'sla' && (
