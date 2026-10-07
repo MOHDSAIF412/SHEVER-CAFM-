@@ -287,3 +287,12 @@ REVOKE ALL ON FUNCTION cafm_rate_type_at(TIMESTAMPTZ) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION cafm_markup_for(TEXT, TEXT) FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION cafm_recalc_wo_costing(TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION cafm_rate_type_at(TIMESTAMPTZ) TO authenticated;
+
+-- Trigger functions are not meant to be called over the API.
+REVOKE ALL ON FUNCTION cafm_profiles_rate_guard() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_trg_costing_charges() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_wo_labour_price() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_wo_material_price() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_wo_material_stock() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_wo_subcontract_price() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION cafm_markup_for(TEXT, TEXT) FROM authenticated;
