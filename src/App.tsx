@@ -9,7 +9,7 @@ import { WorkOrdersList } from './pages/work-orders/WorkOrdersList';
 import { CreateWorkOrder } from './pages/work-orders/CreateWorkOrder';
 import { WorkOrderDetail } from './pages/work-orders/WorkOrderDetail';
 import { PPMDashboard } from './pages/ppm/PPMDashboard';
-import { PPMSchedulesList } from './pages/ppm/PPMSchedulesList';
+import { PPMPlanner } from './pages/ppm/PPMPlanner';
 import { PPMPlansList } from './pages/ppm/PPMPlansList';
 import { PPMChecklists } from './pages/ppm/PPMChecklists';
 import { AssetsList } from './pages/assets/AssetsList';
@@ -73,7 +73,8 @@ export function App() {
 
               {/* PPM Module */}
               <Route path="ppm/dashboard" element={<PPMDashboard />} />
-              <Route path="ppm/schedules" element={<PPMSchedulesList />} />
+              <Route path="ppm/planner" element={<PPMPlanner />} />
+              <Route path="ppm/schedules" element={<Navigate to="/ppm/planner" replace />} />
               <Route path="ppm/plans" element={<PPMPlansList />} />
               <Route path="ppm/checklists" element={<PPMChecklists />} />
 

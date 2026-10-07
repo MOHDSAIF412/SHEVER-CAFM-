@@ -36,18 +36,21 @@
 }
 
 /* Glassmorphism & Enterprise UI utilities */
-.enterprise-card {
-  @apply bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm transition-all duration-150;
-}
+/* In the components layer so utilities (w-auto, pl-8...) can override them. */
+@layer components {
+  .enterprise-card {
+    @apply bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm transition-all duration-150;
+  }
 
-.enterprise-card:hover {
-  @apply border-slate-300 dark:border-slate-700 shadow;
-}
+  .enterprise-card:hover {
+    @apply border-slate-300 dark:border-slate-700 shadow;
+  }
 
-.enterprise-input {
-  @apply w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 transition-colors;
-}
+  .enterprise-input {
+    @apply w-full px-3 py-2 bg-slate-50 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-lg text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 transition-colors;
+  }
 
-.enterprise-badge {
-  @apply inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-tight;
+  .enterprise-badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold tracking-tight;
+  }
 }

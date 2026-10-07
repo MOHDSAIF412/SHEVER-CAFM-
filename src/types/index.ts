@@ -234,6 +234,8 @@ export interface WorkOrder {
   cancel_reason?: string | null;
   job_type?: JobType;
   checklist_id?: string | null;
+  ppm_plan_id?: string | null;
+  ppm_due_date?: string | null;
   created_at: string;
   updated_at: string;
 
