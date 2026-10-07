@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
-import { cafmDataService } from '../api/supabase';
+import { cafmDataService, isSupabaseConfigured, supabase } from '../api/supabase';
+import { AppNotification, notificationService, timeAgo } from '../api/notifications';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { UserRole } from '../types';
@@ -32,7 +33,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu }) => {
   const navigate = useNavigate();
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, isAdmin } = useAuth();
   const { theme, setTheme, isDark } = useTheme();
 
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -44,7 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [myName, setMyName] = useState(user?.full_name || 'Admin');
   const [myId, setMyId] = useState(user?.employee_id || '');
-  const [myEmail, setMyEmail] = useState(user?.email || 'admin@shever.com');
+  const [myEmail, setMyEmail] = useState(user?.email || '');
   const [myPassword, setMyPassword] = useState('');
   const [myConfirmPassword, setMyConfirmPassword] = useState('');
   const [profileError, setProfileError] = useState('');
@@ -72,8 +73,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
     e.preventDefault();
     setProfileError('');
 
-    if (myPassword && myPassword.length < 6) {
-      setProfileError('Password must be at least 6 characters.');
+    if (myPassword && myPassword.length < 8) {
+      setProfileError('Password must be at least 8 characters.');
       return;
     }
     if (myPassword && myPassword !== myConfirmPassword) {
@@ -84,12 +85,22 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
 
     setProfileSaving(true);
     try {
+      // Name (and, for admins, the employee ID). The sign-in email belongs to
+      // the login account and is changed by an admin on the Users screen.
       await cafmDataService.updateUser(user.id, {
         full_name: myName.trim(),
-        employee_id: myId.trim() || undefined,
-        email: myEmail.trim().toLowerCase(),
-        ...(myPassword ? { password: myPassword } : {}),
+        ...(isAdmin ? { employee_id: myId.trim() || undefined } : {}),
       });
+      // Your own password goes straight to Supabase Auth for your session;
+      // the admin password tool is only for setting other people's.
+      if (myPassword) {
+        if (isSupabaseConfigured()) {
+          const { error } = await supabase.auth.updateUser({ password: myPassword });
+          if (error) throw new Error(`Password not changed: ${error.message}`);
+        } else {
+          await cafmDataService.updateUser(user.id, { password: myPassword });
+        }
+      }
 
       setMyPassword('');
       setMyConfirmPassword('');
@@ -133,16 +144,32 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const notifications = [
-    { id: 1, title: 'Emergency WO-2026-000003 logged', time: '10m ago', type: 'alert' },
-    { id: 2, title: 'Rashid Khan completed AHU-001 PPM', time: '25m ago', type: 'success' },
-    { id: 3, title: 'Chiller Unit #1 Quarterly PPM due today', time: '1h ago', type: 'warning' },
-  ];
+  // Real notifications, written by the database; refreshed every minute and
+  // whenever the tab comes back into focus.
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    const load = () => notificationService.mine().then((n) => alive && setNotifications(n));
+    load();
+    const t = setInterval(load, 60_000);
+    window.addEventListener('focus', load);
+    return () => {
+      alive = false;
+      clearInterval(t);
+      window.removeEventListener('focus', load);
+    };
+  }, [user]);
+  const unread = notifications.filter((n) => !n.is_read);
+  const markRead = (ids: string[]) => {
+    setNotifications((ns) => ns.map((n) => (ids.includes(n.id) ? { ...n, is_read: true } : n)));
+    notificationService.markRead(ids);
+  };
 
   return (
     <header className="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 flex items-center justify-between z-20 transition-colors">
       {/* Left: Global Command Search Button */}
-      <div className="flex items-center space-x-2 max-w-xs w-full">
+      <div className="flex items-center space-x-2 sm:max-w-xs sm:w-full">
         {/* Drawer trigger - phones and tablets only */}
         <button
           onClick={onOpenMenu}
@@ -157,17 +184,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
           className="w-full flex items-center justify-between px-3 py-1.5 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/70 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-lg text-xs border border-slate-200/80 dark:border-slate-700/60 transition-colors"
         >
           <div className="flex items-center space-x-2">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
-            <span>Search or jump to...</span>
+            <Search className="w-3.5 h-3.5 shrink-0 text-slate-400" />
+            <span className="hidden truncate sm:inline">Search or jump to...</span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
+          <kbd className="hidden sm:inline px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
             Ctrl K
           </kbd>
         </button>
       </div>
 
       {/* Center: Shifted Facilities Command Greeting & Status */}
-      <div className="hidden md:flex items-center space-x-3 text-xs bg-slate-50 dark:bg-slate-800/60 py-1.5 px-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm">
+      <div className="hidden 2xl:flex whitespace-nowrap items-center space-x-3 text-xs bg-slate-50 dark:bg-slate-800/60 py-1.5 px-3.5 rounded-xl border border-slate-200/80 dark:border-slate-700/50 shadow-sm">
         <div className="flex items-center space-x-1.5 font-bold text-slate-800 dark:text-slate-100">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>Good Day, {user?.full_name?.replace(/\s*\([^)]*\)/g, '') || 'Saif Al-Nuaimi'}</span>
@@ -228,7 +255,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
                   <div className="text-[10px] text-slate-400">Equipment QR tag registry</div>
                 </div>
               </Link>
-              <Link
+              {isAdmin && <Link
                 to="/users"
                 onClick={() => setShowQuickCreate(false)}
                 className="flex items-center px-3 py-2 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
@@ -238,7 +265,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
                   <div className="font-semibold">Add User</div>
                   <div className="text-[10px] text-slate-400">Staff role access</div>
                 </div>
-              </Link>
+              </Link>}
             </div>
           )}
         </div>
@@ -262,31 +289,45 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white dark:ring-slate-900"></span>
+            {unread.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white ring-2 ring-white dark:ring-slate-900">
+                {unread.length > 9 ? '9+' : unread.length}
+              </span>
+            )}
           </button>
 
           {showNotifications && (
             <div className="absolute right-0 mt-1.5 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-2 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-1.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <span className="font-bold text-slate-900 dark:text-slate-100">Live Notifications</span>
-                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold cursor-pointer">
-                  Mark all read
-                </span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">Notifications</span>
+                {unread.length > 0 && (
+                  <button onClick={() => markRead(unread.map((n) => n.id))} className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">
+                    Mark all read
+                  </button>
+                )}
               </div>
-              <div className="divide-y divide-slate-100 dark:divide-slate-800/50">
+              <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800/50">
+                {notifications.length === 0 && <div className="p-6 text-center text-slate-400">No notifications yet.</div>}
                 {notifications.map((n) => (
-                  <div
+                  <button
                     key={n.id}
-                    className="p-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer flex items-start space-x-2.5"
+                    onClick={() => {
+                      markRead([n.id]);
+                      setShowNotifications(false);
+                      if (n.entity_type === 'work_order' && n.entity_id) navigate(`/work-orders/${n.entity_id}`);
+                    }}
+                    className={`flex w-full items-start space-x-2.5 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-800/50 ${n.is_read ? 'opacity-60' : ''}`}
                   >
-                    {n.type === 'alert' && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
-                    {n.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
-                    {n.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
-                    <div>
-                      <div className="text-slate-800 dark:text-slate-200 font-medium">{n.title}</div>
-                      <div className="text-[10px] text-slate-400">{n.time}</div>
+                    {n.kind === 'alert' && <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />}
+                    {n.kind === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
+                    {n.kind === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />}
+                    {(!n.kind || n.kind === 'info') && <ClipboardList className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />}
+                    <div className="min-w-0">
+                      <div className={`text-slate-800 dark:text-slate-200 ${n.is_read ? '' : 'font-semibold'}`}>{n.title}</div>
+                      {n.body && <div className="truncate text-[11px] text-slate-500">{n.body}</div>}
+                      <div className="text-[10px] text-slate-400">{timeAgo(n.created_at)}</div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -322,7 +363,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
             <div className="absolute right-0 mt-1.5 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl py-1.5 z-50 text-xs animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                 <div className="font-bold text-slate-900 dark:text-slate-100">{user?.full_name || 'Admin'}</div>
-                <div className="text-[10px] text-slate-400">{user?.email || 'admin@shever.com'}</div>
+                <div className="text-[10px] text-slate-400">{user?.email}</div>
               </div>
               <button
                 onClick={() => {
@@ -411,6 +452,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
                   <input
                     type="text"
                     value={myId}
+                    disabled={!isAdmin}
                     onChange={(e) => setMyId(e.target.value)}
                     placeholder="e.g. EMP-101"
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 font-mono focus:ring-1 focus:ring-teal-500 focus:outline-none"
@@ -418,10 +460,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCommandPalette, onOpenMenu
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Login Email / Username</label>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Login Email <span className="font-normal text-slate-400">(an admin changes this on the Users screen)</span></label>
                   <input
                     type="email"
-                    required
+                    disabled
                     value={myEmail}
                     onChange={(e) => setMyEmail(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 focus:outline-none"

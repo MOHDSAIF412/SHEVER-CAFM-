@@ -1,5 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { assetQrValue } from '../api/hierarchy';
 import { Asset } from '../types';
 import { Printer, X } from 'lucide-react';
 
@@ -26,7 +27,7 @@ export const AssetQRCodeModal: React.FC<{ asset: Asset; onClose: () => void }> =
           </div>
 
           <div className="flex justify-center p-3 bg-white rounded-lg shadow-sm">
-            <QRCodeSVG value={asset.asset_number} size={150} level="H" includeMargin />
+            <QRCodeSVG value={assetQrValue(asset.asset_number)} size={150} level="H" includeMargin />
           </div>
 
           <div>

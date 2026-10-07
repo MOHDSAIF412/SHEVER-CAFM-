@@ -1,0 +1,15 @@
+{
+  "name": "OCS CAFM",
+  "short_name": "OCS CAFM",
+  "description": "OCS facilities management: work orders, PPM, assets and billing.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#293771",
+  "theme_color": "#293771",
+  "icons": [
+    { "src": "/ocs-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/ocs-favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

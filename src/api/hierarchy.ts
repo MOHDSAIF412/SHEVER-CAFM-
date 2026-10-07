@@ -129,6 +129,8 @@ export const hierarchyService = {
 
 /** Room QR codes point at the (future) QR complaint portal. */
 export const roomQrValue = (token: string) => `${window.location.origin}/r/${token}`;
+/** Phone-scannable link for an asset label (opens /a/:code). */
+export const assetQrValue = (assetNumber: string) => `${window.location.origin}/a/${encodeURIComponent(assetNumber)}`;
 
 // ---------------------------------------------------------------------------
 // Tree helpers (pure)

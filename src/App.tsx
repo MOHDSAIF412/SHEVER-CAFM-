@@ -30,9 +30,13 @@ import { CategoriesList } from './pages/settings/CategoriesList';
 import { AuditLogs } from './pages/audit/AuditLogs';
 
 import { ThemeProvider } from './context/ThemeContext';
+import { RoomScan, AssetScan } from './pages/facilities/ScanPages';
+import { JobTypes } from './pages/settings/JobTypes';
+import { useLocation } from 'react-router-dom';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -43,9 +47,20 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Remember where they were going (a scanned QR label, a link in a
+    // notification) and send them back there after signing in.
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   }
 
+  return <>{children}</>;
+};
+
+/** Pages only some roles may open. The database enforces the same rules. */
+const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({ roles, children }) => {
+  const { role } = useAuth();
+  if (!role || !roles.includes(role)) {
+    return <div className="py-20 text-center text-sm text-slate-500">You do not have access to this page.</div>;
+  }
   return <>{children}</>;
 };
 
@@ -100,17 +115,22 @@ export function App() {
               <Route path="reports" element={<ReportsCenter />} />
 
               {/* Administration & Security */}
-              <Route path="users" element={<UsersList />} />
-              <Route path="settings" element={<SystemSettings />} />
-              <Route path="settings/categories" element={<CategoriesList />} />
+              <Route path="users" element={<RoleRoute roles={['admin']}><UsersList /></RoleRoute>} />
+              <Route path="settings" element={<RoleRoute roles={['admin', 'fm_manager']}><SystemSettings /></RoleRoute>} />
+              <Route path="settings/categories" element={<RoleRoute roles={['admin', 'fm_manager']}><CategoriesList /></RoleRoute>} />
+              <Route path="settings/job-types" element={<RoleRoute roles={['admin', 'fm_manager']}><JobTypes /></RoleRoute>} />
               <Route path="settings/costing" element={<CostingSettings />} />
               <Route path="costing" element={<JobCostingReport />} />
               <Route path="billing" element={<BillingHome />} />
               <Route path="billing/invoices/:id" element={<InvoiceDetail />} />
               <Route path="billing/quotes/:id" element={<QuoteDetail />} />
               <Route path="clients" element={<ClientsList />} />
-              <Route path="audit" element={<AuditLogs />} />
-              <Route path="audit-logs" element={<AuditLogs />} />
+              <Route path="audit" element={<RoleRoute roles={['admin', 'fm_manager']}><AuditLogs /></RoleRoute>} />
+              <Route path="audit-logs" element={<Navigate to="/audit" replace />} />
+
+              {/* QR labels */}
+              <Route path="r/:token" element={<RoomScan />} />
+              <Route path="a/:code" element={<AssetScan />} />
             </Route>
 
             {/* Catch-all */}
