@@ -156,6 +156,7 @@ export type WorkOrderStatus =
   | 'Accepted'
   | 'In Progress'
   | 'On Hold'
+  | 'Work Done'
   | 'Completed'
   | 'Pending Approval'
   | 'Closed'
@@ -201,6 +202,37 @@ export interface WorkOrder {
   before_photo_url?: string;
   after_photo_url?: string;
   photos?: WorkOrderPhoto[];
+
+  // Work-order engine (database/11_work_order_engine.sql)
+  wo_type?: WorkOrderType;
+  sla_priority?: SlaPriority;
+  sla_policy_id?: string | null;
+  job_type_id?: string | null;
+  facility_id?: string | null;
+  zone_id?: string | null;
+  contract_id?: string | null;
+  parent_wo_id?: string | null;
+  source?: string;
+  trade?: string | null;
+  assigned_at?: string | null;
+  arrived_at?: string | null;
+  restoration_due_at?: string | null;
+  restored_at?: string | null;
+  work_done_at?: string | null;
+  on_hold_since?: string | null;
+  hold_reason?: string | null;
+  sla_paused_minutes?: number | null;
+  response_breached?: boolean;
+  resolution_breached?: boolean;
+  symptoms?: string | null;
+  is_chargeable?: boolean;
+  billing_status?: string;
+  client_signoff_name?: string | null;
+  client_signoff_at?: string | null;
+  client_rating?: number | null;
+  client_comment?: string | null;
+  cancel_reason?: string | null;
+  job_type?: JobType;
   created_at: string;
   updated_at: string;
 
@@ -406,4 +438,71 @@ export interface DashboardStats {
   totalAssets: number;
   slaComplianceRate: number;
   avgResolutionHours: number;
+}
+
+export type WorkOrderType = 'Reactive' | 'On-call' | 'PPM' | 'Corrective' | 'Quoted';
+export type SlaPriority = 'P1' | 'P2' | 'P3' | 'P4';
+
+export interface ServiceGroup {
+  id: string;
+  code: string;
+  name: string;
+  sort_order?: number;
+}
+
+export interface ServiceType {
+  id: string;
+  group_id: string;
+  code: string;
+  name: string;
+  trade_code?: string | null;
+  category_id?: string | null;
+  sort_order?: number;
+}
+
+export interface JobType {
+  id: string;
+  service_type_id: string;
+  code: string;
+  name: string;
+  name_ar?: string | null;
+  default_priority: SlaPriority;
+  checklist_id?: string | null;
+  est_hours?: number | null;
+  is_active?: boolean;
+}
+
+export interface SlaPolicy {
+  id: string;
+  contract_id?: string | null;
+  priority: SlaPriority;
+  name: string;
+  response_minutes: number;
+  restoration_minutes?: number | null;
+  resolution_minutes: number;
+  color_hex?: string | null;
+}
+
+export interface TimeLogEntry {
+  id: string;
+  work_order_id: string;
+  technician_id?: string | null;
+  technician_name?: string | null;
+  record_type: 'Travel' | 'Labour';
+  started_at?: string | null;
+  ended_at?: string | null;
+  hours: number;
+  is_manual?: boolean;
+  note?: string | null;
+  created_at?: string;
+}
+
+export interface StatusHistoryEntry {
+  id: string;
+  work_order_id: string;
+  from_status?: string | null;
+  to_status: string;
+  changed_by?: string | null;
+  comments?: string | null;
+  created_at: string;
 }

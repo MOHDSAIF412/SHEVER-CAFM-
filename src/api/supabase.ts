@@ -689,7 +689,7 @@ export const cloudSync = {
 const NON_COLUMN_FIELDS = [
   'building', 'floor', 'location', 'asset', 'category', 'subcategory',
   'assigned_technician', 'assigned_supervisor', 'plan', 'checklist',
-  'photos', 'comments', 'materials', 'status_history', 'password',
+  'photos', 'comments', 'materials', 'status_history', 'password', 'job_type',
 ];
 
 export const toRow = <T extends Record<string, any>>(obj: T): Record<string, any> => {
@@ -901,8 +901,9 @@ export const cafmDataService = {
     const seq = memoryWorkOrders.length + 100001;
     const currYear = new Date().getFullYear();
     const newWo: WorkOrder = {
+      ...woData,
       id: newId(),
-      wo_number: `WO-${currYear}-${String(seq).padStart(6, '0')}`,
+      wo_number: woData.wo_number || `WO-${currYear}-${String(seq).padStart(6, '0')}`,
       building_id: woData.building_id || memoryBuildings[0].id,
       floor_id: woData.floor_id || memoryFloors[0].id,
       location_id: woData.location_id || memoryLocations[0].id,
@@ -921,12 +922,15 @@ export const cafmDataService = {
       updated_at: new Date().toISOString(),
     };
 
-    await cloudWrite('Creating work order', () =>
-      supabase.from('work_orders').insert(toRow(newWo))
+    // The database fills SLA deadlines and priority mapping on insert; read
+    // the row back so the screen shows them immediately.
+    const saved = await cloudWrite('Creating work order', () =>
+      supabase.from('work_orders').insert(toRow(newWo)).select().single()
     );
-    memoryWorkOrders.unshift(newWo);
+    const stored = (saved as WorkOrder) || newWo;
+    memoryWorkOrders.unshift(stored);
     saveStore('shever_work_orders', memoryWorkOrders);
-    return populateWorkOrder(newWo);
+    return populateWorkOrder(stored);
   },
 
   async updateWorkOrderStatus(
@@ -989,15 +993,23 @@ export const cafmDataService = {
   },
 
   async updateWorkOrder(id: string, updates: Partial<WorkOrder>): Promise<WorkOrder | undefined> {
-    const target = memoryWorkOrders.find((w) => w.id === id);
-    if (!target) return undefined;
-    await cloudWrite('Updating work order', () =>
+    // Status changes run database triggers (timestamps, SLA pause, history),
+    // so return the row as the database left it.
+    const saved = await cloudWrite('Updating work order', () =>
       supabase
         .from('work_orders')
         .update(toRow({ ...updates, updated_at: new Date().toISOString() }))
         .eq('id', id)
+        .select()
+        .maybeSingle()
     );
-    Object.assign(target, updates);
+    if (isSupabaseConfigured() && !saved) {
+      throw new Error('Updating work order failed: you may not have permission to change this job.');
+    }
+    let target = memoryWorkOrders.find((w) => w.id === id);
+    if (target) Object.assign(target, saved || updates);
+    else if (saved) memoryWorkOrders.unshift((target = saved as WorkOrder));
+    else return undefined;
     saveStore('shever_work_orders', memoryWorkOrders);
     return populateWorkOrder(target);
   },

@@ -9,7 +9,8 @@ import { WorkOrder } from '../types';
  */
 export type SlaState =
   | 'no-target' // no deadline recorded
-  | 'settled' // completed or closed - the clock has stopped
+  | 'settled' // work done, completed or closed - the clock has stopped
+  | 'paused' // on hold - the database moves the deadline when work resumes
   | 'safe' // comfortably within target
   | 'warning' // 75%+ of the window used
   | 'critical' // 90%+ used, escalate now
@@ -50,7 +51,7 @@ export const formatDuration = (ms: number): string => {
   return `${m}m`;
 };
 
-const SETTLED = ['Completed', 'Closed', 'Cancelled'];
+const SETTLED = ['Work Done', 'Pending Approval', 'Completed', 'Closed', 'Cancelled'];
 
 export const getSlaStatus = (wo: WorkOrder, now: Date = new Date()): SlaStatus => {
   const due = wo.resolution_due_at ? new Date(wo.resolution_due_at) : null;
@@ -69,7 +70,7 @@ export const getSlaStatus = (wo: WorkOrder, now: Date = new Date()): SlaStatus =
   if (SETTLED.includes(wo.status)) {
     // Judge against when work actually finished, not against "now" - otherwise
     // every historic job drifts into breach as time passes.
-    const finished = wo.closed_at || wo.completed_at;
+    const finished = wo.work_done_at || wo.completed_at || wo.closed_at;
     const finishedAt = finished ? new Date(finished) : null;
     const late = finishedAt ? finishedAt.getTime() > due.getTime() : Boolean(wo.is_overdue);
     return {
@@ -78,6 +79,18 @@ export const getSlaStatus = (wo: WorkOrder, now: Date = new Date()): SlaStatus =
       elapsedRatio: late ? 1 : 0,
       label: late ? 'Closed after SLA' : 'Closed within SLA',
       short: late ? 'Late' : 'On time',
+      needsEscalation: false,
+    };
+  }
+
+  if (wo.status === 'On Hold') {
+    const left = due.getTime() - (wo.on_hold_since ? new Date(wo.on_hold_since).getTime() : now.getTime());
+    return {
+      state: 'paused',
+      msRemaining: left,
+      elapsedRatio: 0,
+      label: `On hold — clock paused with ${formatDuration(left)} left`,
+      short: 'Paused',
       needsEscalation: false,
     };
   }
@@ -117,6 +130,11 @@ export const SLA_STYLES: Record<SlaState, { chip: string; bar: string; dot: stri
     bar: 'bg-slate-300 dark:bg-slate-700',
     dot: 'bg-slate-400',
   },
+  paused: {
+    chip: 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800',
+    bar: 'bg-sky-400',
+    dot: 'bg-sky-400',
+  },
   settled: {
     chip: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700',
     bar: 'bg-slate-400 dark:bg-slate-600',
@@ -142,4 +160,50 @@ export const SLA_STYLES: Record<SlaState, { chip: string; bar: string; dot: stri
     bar: 'bg-rose-500',
     dot: 'bg-rose-500',
   },
+};
+
+/**
+ * One SLA clock (response, restoration or resolution): target vs actual.
+ * `met` is when the milestone was reached; until then the clock is live.
+ */
+export interface ClockResult {
+  state: 'none' | 'met' | 'late' | 'running' | 'warning' | 'overdue' | 'paused';
+  dueAt: Date | null;
+  metAt: Date | null;
+  /** Target window length (due - created). */
+  targetMs: number | null;
+  /** Actual elapsed to `met`, or so far. */
+  actualMs: number | null;
+  label: string;
+}
+
+export const slaClock = (
+  createdAt: string,
+  dueAt?: string | null,
+  metAt?: string | null,
+  paused = false,
+  now: Date = new Date()
+): ClockResult => {
+  const created = new Date(createdAt);
+  const due = dueAt ? new Date(dueAt) : null;
+  const met = metAt ? new Date(metAt) : null;
+  if (!due) return { state: 'none', dueAt: null, metAt: met, targetMs: null, actualMs: null, label: 'No target' };
+  const targetMs = due.getTime() - created.getTime();
+  if (met) {
+    const late = met > due;
+    return {
+      state: late ? 'late' : 'met',
+      dueAt: due,
+      metAt: met,
+      targetMs,
+      actualMs: met.getTime() - created.getTime(),
+      label: late ? `Late by ${formatDuration(met.getTime() - due.getTime())}` : 'Met',
+    };
+  }
+  const left = due.getTime() - now.getTime();
+  const actualMs = now.getTime() - created.getTime();
+  if (paused) return { state: 'paused', dueAt: due, metAt: null, targetMs, actualMs, label: 'Paused' };
+  if (left <= 0) return { state: 'overdue', dueAt: due, metAt: null, targetMs, actualMs, label: `Overdue ${formatDuration(left)}` };
+  const ratio = targetMs > 0 ? actualMs / targetMs : 1;
+  return { state: ratio >= 0.75 ? 'warning' : 'running', dueAt: due, metAt: null, targetMs, actualMs, label: `${formatDuration(left)} left` };
 };
