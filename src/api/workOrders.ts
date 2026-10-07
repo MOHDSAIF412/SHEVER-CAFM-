@@ -184,7 +184,7 @@ export const workOrderService = {
     }
   },
 
-  async addManualTime(woId: string, entry: { record_type: 'Travel' | 'Labour'; hours: number; technician_name?: string; note?: string; started_at?: string }) {
+  async addManualTime(woId: string, entry: { record_type: 'Travel' | 'Labour'; hours: number; rate_type?: 'Normal' | 'Overtime' | 'Holiday'; technician_id?: string; technician_name?: string; note?: string; started_at?: string }) {
     const row = { id: newId(), work_order_id: woId, is_manual: true, ...entry };
     if (!isSupabaseConfigured()) {
       const key = `shever_timelog_${woId}`;

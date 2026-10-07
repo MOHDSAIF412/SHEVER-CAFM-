@@ -1243,6 +1243,8 @@ export const cafmDataService = {
       phone: userData.phone || '+971 50 000 0000',
       role_id: userData.role_id || 'technician',
       department: userData.department || 'Operations',
+      trade_code: userData.trade_code || null,
+      grade: userData.grade || null,
       is_active: true,
       created_at: new Date().toISOString(),
     };
@@ -1258,6 +1260,13 @@ export const cafmDataService = {
         password: userData.password,
       });
       stored = res.profile || newUser;
+      // The account service only writes the basic profile; add trade/grade.
+      if ((newUser.trade_code || newUser.grade) && stored.id) {
+        await cloudWrite('Saving trade and grade', () =>
+          supabase.from('profiles').update({ trade_code: newUser.trade_code, grade: newUser.grade }).eq('id', stored.id)
+        );
+        stored = { ...stored, trade_code: newUser.trade_code, grade: newUser.grade };
+      }
     } else {
       // Offline demo mode: the device is the only place the password can live.
       stored.password = userData.password || 'Password123!';

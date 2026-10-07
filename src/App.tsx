@@ -21,6 +21,8 @@ import { MaterialsList } from './pages/materials/MaterialsList';
 import { ReportsCenter } from './pages/reports/ReportsCenter';
 import { UsersList } from './pages/users/UsersList';
 import { SystemSettings } from './pages/settings/SystemSettings';
+import { CostingSettings } from './pages/settings/CostingSettings';
+import { JobCostingReport } from './pages/reports/JobCostingReport';
 import { CategoriesList } from './pages/settings/CategoriesList';
 import { AuditLogs } from './pages/audit/AuditLogs';
 
@@ -98,6 +100,8 @@ export function App() {
               <Route path="users" element={<UsersList />} />
               <Route path="settings" element={<SystemSettings />} />
               <Route path="settings/categories" element={<CategoriesList />} />
+              <Route path="settings/costing" element={<CostingSettings />} />
+              <Route path="costing" element={<JobCostingReport />} />
               <Route path="audit" element={<AuditLogs />} />
               <Route path="audit-logs" element={<AuditLogs />} />
             </Route>

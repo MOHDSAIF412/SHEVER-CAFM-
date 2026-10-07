@@ -18,6 +18,8 @@ export interface UserProfile {
   role_id: UserRole;
   avatar_url?: string;
   department?: string;
+  trade_code?: string | null;
+  grade?: string | null;
   is_active: boolean;
   permissions?: UserPermissions;
   last_login_at?: string;
@@ -432,6 +434,16 @@ export interface SystemSettings {
     push_enabled: boolean;
     sms_enabled: boolean;
   };
+  // Costing defaults (database/14_job_costing.sql)
+  material_markup_pct?: number;
+  subcontract_markup_pct?: number;
+  bill_travel?: boolean;
+  work_day_start?: string;
+  work_day_end?: string;
+  /** ISO weekdays, 1 = Monday ... 7 = Sunday */
+  weekend_days?: number[];
+  vat_enabled?: boolean;
+  vat_rate?: number;
   updated_at: string;
 }
 
@@ -503,6 +515,84 @@ export interface TimeLogEntry {
   is_manual?: boolean;
   note?: string | null;
   created_at?: string;
+  // Costing (priced from the rate card by the database)
+  trade_code?: string | null;
+  grade?: string | null;
+  rate_type?: RateType;
+  cost_rate?: number;
+  sell_rate?: number;
+  cost_amount?: number;
+  sell_amount?: number;
+  rate_locked?: boolean;
+}
+
+export type RateType = 'Normal' | 'Overtime' | 'Holiday';
+
+export interface LabourRate {
+  id: string;
+  contract_id?: string | null;
+  trade_code?: string | null;
+  grade: string;
+  rate_type: RateType;
+  cost_rate: number;
+  sell_rate: number;
+  effective_from?: string | null;
+}
+
+export interface JobMaterial {
+  id: string;
+  work_order_id: string;
+  source: 'Store' | 'Direct Purchase';
+  material_id?: string | null;
+  description?: string | null;
+  unit?: string | null;
+  quantity_used: number;
+  unit_cost: number;
+  total_cost?: number;
+  markup_pct?: number | null;
+  sell_amount?: number;
+  supplier?: string | null;
+  supplier_invoice_ref?: string | null;
+  added_by?: string | null;
+  created_at?: string;
+}
+
+export interface SubcontractLine {
+  id: string;
+  work_order_id: string;
+  subcontractor: string;
+  description?: string | null;
+  po_number?: string | null;
+  supplier_invoice_ref?: string | null;
+  cost_amount: number;
+  markup_pct?: number | null;
+  sell_amount?: number;
+  created_at?: string;
+}
+
+export interface JobCosting {
+  work_order_id: string;
+  labour_cost: number;
+  labour_sell: number;
+  material_cost: number;
+  material_sell: number;
+  subcontract_cost: number;
+  subcontract_sell: number;
+  callout_fee: number;
+  minimum_charge: number;
+  markup_pct: number;
+  discount: number;
+  total_cost: number;
+  total_sell: number;
+  notes?: string | null;
+  updated_at?: string;
+}
+
+export interface PublicHoliday {
+  id: string;
+  holiday_date: string;
+  name: string;
+  calendar_id?: string | null;
 }
 
 export interface StatusHistoryEntry {

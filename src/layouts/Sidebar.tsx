@@ -19,6 +19,8 @@ import {
   Radio,
   ClipboardCheck,
   Layers,
+  Coins,
+  BadgeDollarSign,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -31,7 +33,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobileOpen = false, closeMobile }) => {
-  const { user, role, isAdmin } = useAuth();
+  const { user, role, isAdmin, isManager, isSupervisor } = useAuth();
+  const lead = isAdmin || isManager || isSupervisor;
 
   const navigationGroups = [
     {
@@ -62,8 +65,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
       items: [
         { name: 'Reports & Export', path: '/reports', icon: FileSpreadsheet },
         { name: 'PPM Compliance', path: '/ppm/dashboard', icon: Gauge },
+        ...(lead ? [{ name: 'Job Costing', path: '/costing', icon: Coins }] : []),
       ],
     },
+    ...(!isAdmin && isManager
+      ? [{ title: 'ADMINISTRATION', items: [{ name: 'Rates & Costing', path: '/settings/costing', icon: BadgeDollarSign }] }]
+      : []),
     ...(isAdmin
       ? [
           {
@@ -71,6 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
             items: [
               { name: 'Users & Roles', path: '/users', icon: Users },
               { name: 'Trades & Types', path: '/settings/categories', icon: Layers },
+              { name: 'Rates & Costing', path: '/settings/costing', icon: BadgeDollarSign },
               { name: 'System Settings', path: '/settings', icon: Settings },
               { name: 'Audit Trail', path: '/audit', icon: ShieldAlert },
             ],
