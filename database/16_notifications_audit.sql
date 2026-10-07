@@ -216,3 +216,6 @@ UPDATE system_settings SET
 REVOKE ALL ON FUNCTION cafm_notify(TEXT, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION cafm_notify_leads(TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION cafm_wo_notifications() FROM PUBLIC, anon, authenticated;
+
+-- The old breach flagger (replaced by cafm_sla_scan) is no longer callable from the API.
+REVOKE ALL ON FUNCTION flag_sla_breaches() FROM PUBLIC, anon, authenticated;
