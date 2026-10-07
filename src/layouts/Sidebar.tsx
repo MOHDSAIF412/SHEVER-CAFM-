@@ -21,6 +21,8 @@ import {
   Layers,
   Coins,
   BadgeDollarSign,
+  Receipt,
+  Handshake,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -50,6 +52,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
         { name: 'PPM Plans', path: '/ppm/plans', icon: CalendarDays },
         { name: 'PPM Planner', path: '/ppm/planner', icon: CalendarCheck2 },
         { name: 'PPM Checklists', path: '/ppm/checklists', icon: ClipboardCheck },
+        ...(lead
+          ? [
+              { name: 'Billing', path: '/billing', icon: Receipt },
+              { name: 'Clients & Contracts', path: '/clients', icon: Handshake },
+            ]
+          : []),
       ],
     },
     {
@@ -69,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
       ],
     },
     ...(!isAdmin && isManager
-      ? [{ title: 'ADMINISTRATION', items: [{ name: 'Rates & Costing', path: '/settings/costing', icon: BadgeDollarSign }] }]
+      ? [{ title: 'ADMINISTRATION', items: [{ name: 'Rates & Billing', path: '/settings/costing', icon: BadgeDollarSign }] }]
       : []),
     ...(isAdmin
       ? [
@@ -78,7 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
             items: [
               { name: 'Users & Roles', path: '/users', icon: Users },
               { name: 'Trades & Types', path: '/settings/categories', icon: Layers },
-              { name: 'Rates & Costing', path: '/settings/costing', icon: BadgeDollarSign },
+              { name: 'Rates & Billing', path: '/settings/costing', icon: BadgeDollarSign },
               { name: 'System Settings', path: '/settings', icon: Settings },
               { name: 'Audit Trail', path: '/audit', icon: ShieldAlert },
             ],

@@ -107,7 +107,9 @@ export const actionsFor = (wo: WorkOrder, role: UserRole | null, userId?: string
   if ((s === 'Assigned' || s === 'In Progress') && field) out.push(ACT.hold);
   if (s === 'On Hold' && field) out.push(ACT.resume);
   if (s === 'Work Done' && lead) out.push(ACT.complete, ACT.send_back);
-  if (s === 'Completed' && manager) out.push(ACT.close);
+  // Chargeable jobs close themselves when their invoice is paid.
+  const billable = !!wo.is_chargeable && !['Paid', 'Written Off'].includes(wo.billing_status || '');
+  if (s === 'Completed' && manager && !billable) out.push(ACT.close);
   if (['New', 'Assigned', 'On Hold'].includes(s) && lead) out.push(ACT.cancel);
   if ((s === 'Closed' || s === 'Cancelled' || s === 'Completed') && manager) out.push(ACT.reopen);
   return out;

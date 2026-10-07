@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { PhotoUploader } from '../../components/PhotoUploader';
 import { WorkOrderChecklist } from '../../components/WorkOrderChecklist';
 import { JobCostPanel } from '../../components/JobCostPanel';
+import { JobBillingCard } from '../../components/JobBillingCard';
 import { RATE_TYPES } from '../../api/costing';
 import { Template, checklistProgress, checklistService } from '../../api/checklists';
 import { generateWorkOrderPDF } from '../../utils/pdfGenerator';
@@ -497,6 +498,8 @@ export const WorkOrderDetail: React.FC = () => {
               </button>
             )}
           </div>
+
+          {wo.is_chargeable && lead && <JobBillingCard wo={wo} h={h} manager={isAdmin || isManager} onChange={(u) => setWo({ ...u, photos: wo.photos })} />}
 
           <div className="enterprise-card space-y-2 p-4 text-xs">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Reported</h3>

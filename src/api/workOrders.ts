@@ -116,6 +116,9 @@ export const workOrderService = {
       cancel: 'Cancelled',
       reopen: 'In Progress',
     };
+    if (action === 'close' && wo.is_chargeable && !['Paid', 'Written Off'].includes(wo.billing_status || '')) {
+      throw new Error('This is a chargeable job: it closes automatically when its invoice is paid.');
+    }
     const patch: Partial<WorkOrder> = { ...extra };
     const next = to[action];
     if (next) patch.status = next;
@@ -233,7 +236,10 @@ const mirrorOffline = (wo: WorkOrder, patch: Partial<WorkOrder>, now: string) =>
     patch.arrived_at = wo.arrived_at || wo.started_at || now;
     patch.restored_at = wo.restored_at || now;
   }
-  if (s === 'Completed') patch.completed_at = now;
+  if (s === 'Completed') {
+    patch.completed_at = now;
+    if (wo.is_chargeable && (!wo.billing_status || wo.billing_status === 'Not Billable')) patch.billing_status = 'To Bill';
+  }
   if (s === 'Closed') patch.closed_at = now;
   if (s) {
     const key = `shever_history_${wo.id}`;
