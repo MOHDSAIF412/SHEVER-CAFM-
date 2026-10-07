@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
 import { UserProfile, UserRole } from '../../types';
+import { GRADES } from '../../api/costing';
+
+const TRADES = [['HVAC', 'HVAC'], ['ELEC', 'Electrical'], ['PLMB', 'Plumbing'], ['CIVIL', 'Civil & Joinery'], ['FLS', 'Fire & Life Safety'], ['GEN', 'General Maintenance']];
 import { useAuth } from '../../context/AuthContext';
 
 export const UsersList: React.FC = () => {
@@ -48,6 +51,8 @@ export const UsersList: React.FC = () => {
   const [roleId, setRoleId] = useState<UserRole>('technician');
   const [department, setDepartment] = useState('Facilities Operations');
   const [phone, setPhone] = useState('+971 50 ');
+  const [tradeCode, setTradeCode] = useState('');
+  const [grade, setGrade] = useState('Technician');
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -74,6 +79,8 @@ export const UsersList: React.FC = () => {
           role_id: roleId,
           department,
           phone,
+          trade_code: tradeCode || null,
+          grade: grade || null,
           ...(password ? { password } : {}),
         });
       } else {
@@ -85,6 +92,8 @@ export const UsersList: React.FC = () => {
           role_id: roleId,
           department,
           phone,
+          trade_code: tradeCode || null,
+          grade: grade || null,
         });
       }
       setShowCreateModal(false);
@@ -113,6 +122,8 @@ export const UsersList: React.FC = () => {
     setRoleId(u.role_id);
     setDepartment(u.department || 'Operations');
     setPhone(u.phone || '');
+    setTradeCode(u.trade_code || '');
+    setGrade(u.grade || 'Technician');
     setShowCreateModal(true);
   };
 
@@ -166,10 +177,12 @@ export const UsersList: React.FC = () => {
     setFullName('');
     setEmployeeId('');
     setEmail('');
-    setPassword('Password123!');
+    setPassword('');
     setRoleId('technician');
     setDepartment('Facilities Operations');
     setPhone('+971 50 ');
+    setTradeCode('');
+    setGrade('Technician');
   };
 
   const filtered = users.filter(
@@ -431,6 +444,23 @@ export const UsersList: React.FC = () => {
                       className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-900 dark:text-slate-100 focus:ring-1 focus:ring-teal-500 focus:outline-none"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Trade & grade: what their hours cost and are billed at */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Trade</label>
+                  <select value={tradeCode} onChange={(e) => setTradeCode(e.target.value)} className="enterprise-input">
+                    <option value="">Any / multi-skilled</option>
+                    {TRADES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Grade (sets labour rate)</label>
+                  <select value={grade} onChange={(e) => setGrade(e.target.value)} className="enterprise-input">
+                    {GRADES.map((g) => <option key={g}>{g}</option>)}
+                  </select>
                 </div>
               </div>
 

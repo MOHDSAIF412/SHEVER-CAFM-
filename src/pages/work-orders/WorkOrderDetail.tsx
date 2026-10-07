@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, Boxes, Camera, Car, Check, CheckCircle2, ClipboardCheck, Clock, Download, History, Loader2, MapPin, PauseCircle,
-  Phone, Plus, ShieldCheck, Star, Trash2, User, Wrench, X, XCircle,
+  Package, Phone, Plus, ShieldCheck, Star, Trash2, User, Wrench, X, XCircle,
 } from 'lucide-react';
 import { cafmDataService } from '../../api/supabase';
 import { ServiceMatrix, workOrderService } from '../../api/workOrders';
@@ -10,6 +10,8 @@ import { Hierarchy, hierarchyService, roomPath } from '../../api/hierarchy';
 import { useAuth } from '../../context/AuthContext';
 import { PhotoUploader } from '../../components/PhotoUploader';
 import { WorkOrderChecklist } from '../../components/WorkOrderChecklist';
+import { JobCostPanel } from '../../components/JobCostPanel';
+import { RATE_TYPES } from '../../api/costing';
 import { Template, checklistProgress, checklistService } from '../../api/checklists';
 import { generateWorkOrderPDF } from '../../utils/pdfGenerator';
 import { ClockResult, formatDuration, slaClock } from '../../utils/sla';
@@ -18,7 +20,7 @@ import {
 } from '../../utils/woFlow';
 import { SlaPolicy, StatusHistoryEntry, TimeLogEntry, UserProfile, WorkOrder } from '../../types';
 
-type Tab = 'overview' | 'checklist' | 'sla' | 'time' | 'photos' | 'history';
+type Tab = 'overview' | 'checklist' | 'costs' | 'sla' | 'time' | 'photos' | 'history';
 type Dialog = null | 'assign' | 'hold' | 'work_done' | 'complete' | 'cancel' | 'send_back' | 'manual_time' | 'delete';
 
 const fmt = (iso?: string | null) =>
@@ -313,6 +315,7 @@ export const WorkOrderDetail: React.FC = () => {
             {([
               ['overview', 'Overview', Boxes],
               ...(checklist ? [['checklist', `Checklist${checkProgress ? ` ${checkProgress.answered}/${checkProgress.total}` : ''}`, ClipboardCheck]] : []),
+              ['costs', lead ? 'Materials & costs' : 'Materials', Package],
               ['sla', 'SLA', Clock],
               ['time', 'Time log', Car],
               ['photos', `Photos${wo.photos?.length ? ` (${wo.photos.length})` : ''}`, Camera],
@@ -381,6 +384,17 @@ export const WorkOrderDetail: React.FC = () => {
               />
             )}
 
+            {tab === 'costs' && (
+              <JobCostPanel
+                wo={wo}
+                lead={lead}
+                manager={isAdmin || isManager}
+                canAdd={(lead && !['Closed', 'Cancelled'].includes(status)) || (wo.assigned_technician_id === user?.id && status === 'In Progress')}
+                userId={user?.id}
+                refreshKey={timeLog}
+              />
+            )}
+
             {tab === 'sla' && (
               <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-3">
@@ -428,7 +442,7 @@ export const WorkOrderDetail: React.FC = () => {
                   </table>
                 </div>
                 {lead && (
-                  <button onClick={() => { setF({ type: 'Labour', hours: '', who: tech?.full_name || '', note: '' }); setDialog('manual_time'); }} className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-600">
+                  <button onClick={() => { setF({ type: 'Labour', rate: 'Normal', hours: '', who: tech?.full_name || '', note: '' }); setDialog('manual_time'); }} className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-600">
                     <Plus className="h-3.5 w-3.5" /> Add time manually
                   </button>
                 )}
@@ -581,6 +595,9 @@ export const WorkOrderDetail: React.FC = () => {
                   </Field>
                   <Field label="Hours"><input type="number" step="0.25" min="0" value={f.hours} onChange={(e) => set('hours', e.target.value)} className="enterprise-input" /></Field>
                 </div>
+                <Field label="Rate">
+                  <select value={f.rate} onChange={(e) => set('rate', e.target.value)} className="enterprise-input">{RATE_TYPES.map((r) => <option key={r}>{r}</option>)}</select>
+                </Field>
                 <Field label="Who"><input value={f.who} onChange={(e) => set('who', e.target.value)} className="enterprise-input" /></Field>
                 <Field label="Note"><input value={f.note} onChange={(e) => set('note', e.target.value)} className="enterprise-input" /></Field>
                 <DlgButtons
@@ -591,7 +608,7 @@ export const WorkOrderDetail: React.FC = () => {
                   onOk={async () => {
                     setBusy(true);
                     try {
-                      await workOrderService.addManualTime(wo.id, { record_type: f.type, hours: Number(f.hours), technician_name: f.who || undefined, note: f.note || undefined, started_at: new Date().toISOString() });
+                      await workOrderService.addManualTime(wo.id, { record_type: f.type, rate_type: f.rate, hours: Number(f.hours), technician_id: f.who === tech?.full_name ? tech?.id : undefined, technician_name: f.who || undefined, note: f.note || undefined, started_at: new Date().toISOString() });
                       setDialog(null);
                       await refreshSide(wo.id);
                     } catch (e: any) {
