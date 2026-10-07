@@ -53,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
       title: 'ASSETS & SITES',
       items: [
         { name: 'Asset Registry', path: '/assets', icon: Boxes },
-        { name: 'Facility Hierarchy', path: '/facilities/buildings', icon: Building2 },
+        { name: 'Facility Hierarchy', path: '/facilities', icon: Building2 },
         { name: 'Materials & Spares', path: '/materials', icon: Package },
       ],
     },

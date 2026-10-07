@@ -14,7 +14,9 @@ import { PPMPlansList } from './pages/ppm/PPMPlansList';
 import { PPMChecklists } from './pages/ppm/PPMChecklists';
 import { AssetsList } from './pages/assets/AssetsList';
 import { AssetDetail } from './pages/assets/AssetDetail';
-import { BuildingsList } from './pages/facilities/BuildingsList';
+import { FacilityTree } from './pages/facilities/FacilityTree';
+import { QRLabels } from './pages/facilities/QRLabels';
+import { ImportHierarchy } from './pages/facilities/ImportHierarchy';
 import { MaterialsList } from './pages/materials/MaterialsList';
 import { ReportsCenter } from './pages/reports/ReportsCenter';
 import { UsersList } from './pages/users/UsersList';
@@ -80,7 +82,10 @@ export function App() {
               <Route path="assets/:id" element={<AssetDetail />} />
 
               {/* Facilities Hierarchy */}
-              <Route path="facilities/buildings" element={<BuildingsList />} />
+              <Route path="facilities" element={<FacilityTree />} />
+              <Route path="facilities/labels" element={<QRLabels />} />
+              <Route path="facilities/import" element={<ImportHierarchy />} />
+              <Route path="facilities/buildings" element={<Navigate to="/facilities" replace />} />
 
               {/* Materials */}
               <Route path="materials" element={<MaterialsList />} />

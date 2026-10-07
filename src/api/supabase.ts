@@ -576,7 +576,7 @@ try {
   }
 } catch (e) {}
 
-const loadStore = <T>(key: string, seed: T): T => {
+export const loadStore = <T>(key: string, seed: T): T => {
   try {
     const saved = localStorage.getItem(key);
     if (saved) {
@@ -588,7 +588,7 @@ const loadStore = <T>(key: string, seed: T): T => {
   return seed;
 };
 
-const saveStore = <T>(key: string, data: T) => {
+export const saveStore = <T>(key: string, data: T) => {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (e) {}
@@ -692,7 +692,7 @@ const NON_COLUMN_FIELDS = [
   'photos', 'comments', 'materials', 'status_history', 'password',
 ];
 
-const toRow = <T extends Record<string, any>>(obj: T): Record<string, any> => {
+export const toRow = <T extends Record<string, any>>(obj: T): Record<string, any> => {
   const row: Record<string, any> = {};
   for (const [k, v] of Object.entries(obj)) {
     if (NON_COLUMN_FIELDS.includes(k)) continue;
@@ -738,7 +738,7 @@ const describe = (err: any): string => {
  * Awaited write. Throws on rejection so callers cannot report false success.
  * `label` names the operation in the error the user sees.
  */
-const cloudWrite = async <T>(
+export const cloudWrite = async <T>(
   label: string,
   run: () => PromiseLike<{ data: T; error: any }>
 ): Promise<T | null> => {
@@ -761,7 +761,7 @@ const cloudWrite = async <T>(
  * Awaited read. Returns cloud rows when reachable, otherwise the local cache.
  * Reads are cloud-first so a second browser or phone sees the same data.
  */
-const cloudRead = async <T>(
+export const cloudRead = async <T>(
   table: string,
   build: (q: any) => any,
   cacheKey: string
@@ -1037,9 +1037,11 @@ export const cafmDataService = {
   async createAsset(assetData: Partial<Asset>): Promise<Asset> {
     const seq = memoryAssets.length + 1;
     const catCode = memoryCategories.find((c) => c.id === assetData.category_id)?.code || 'GEN';
+    const assetNumber = assetData.asset_number?.trim() || `AST-${catCode}-${String(seq).padStart(3, '0')}`;
     const newAsset: Asset = {
+      ...assetData,
       id: newId(),
-      asset_number: `AST-${catCode}-${String(seq).padStart(3, '0')}`,
+      asset_number: assetNumber,
       name: assetData.name || 'New Equipment Asset',
       type: assetData.type || 'Standard Equipment',
       category_id: assetData.category_id || memoryCategories[0].id,
@@ -1052,7 +1054,7 @@ export const cafmDataService = {
       location_id: assetData.location_id || memoryLocations[0].id,
       status: assetData.status || 'Active',
       criticality: assetData.criticality || 'Medium',
-      qr_code_url: `AST-${catCode}-${String(seq).padStart(3, '0')}`,
+      qr_code_url: assetNumber,
       created_at: new Date().toISOString(),
     };
 
@@ -1063,15 +1065,19 @@ export const cafmDataService = {
   },
 
   async updateAsset(id: string, assetData: Partial<Asset>): Promise<Asset> {
-    const target = memoryAssets.find((a) => a.id === id);
-    if (!target) throw new Error('Asset not found');
-    await cloudWrite('Updating asset', () =>
+    const saved = await cloudWrite('Updating asset', () =>
       supabase
         .from('assets')
         .update(toRow({ ...assetData, updated_at: new Date().toISOString() }))
         .eq('id', id)
+        .select()
+        .maybeSingle()
     );
-    Object.assign(target, assetData);
+    let target = memoryAssets.find((a) => a.id === id);
+    if (target) Object.assign(target, saved || assetData);
+    else if (saved) memoryAssets.unshift((target = saved as Asset));
+    else if (isSupabaseConfigured()) throw new Error('Updating asset failed: you may not have permission to edit assets.');
+    else throw new Error('Asset not found');
     saveStore('shever_assets', memoryAssets);
     return populateAsset(target);
   },

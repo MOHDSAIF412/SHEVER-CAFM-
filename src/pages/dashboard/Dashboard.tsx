@@ -591,7 +591,7 @@ export const Dashboard: React.FC = () => {
         <div className="relative grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {[
             { label: 'Total Buildings', value: buildings.length, sub: 'Active buildings',
-              Icon: Building2, ring: 'bg-blue-500', to: '/facilities/buildings' },
+              Icon: Building2, ring: 'bg-blue-500', to: '/facilities' },
             { label: 'Total Assets', value: assets.length.toLocaleString(), sub: 'Registered assets',
               Icon: Boxes, ring: 'bg-emerald-500', to: '/assets' },
             { label: 'Active Work Orders', value: activeWorkOrders, sub: 'Open & in progress',
