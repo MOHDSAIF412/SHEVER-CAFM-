@@ -23,7 +23,7 @@
 -- ------------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS clients (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-    code TEXT UNIQUE NOT NULL,                 -- 'ADEC'
+    code TEXT UNIQUE NOT NULL,                 -- 'CLIENT-A'
     name TEXT NOT NULL,
     trn TEXT,                                  -- UAE tax registration number
     billing_address TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE TABLE IF NOT EXISTS contracts (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE RESTRICT,
-    code TEXT UNIQUE NOT NULL,                 -- 'ADEC-COMMERCIAL', 'ADEC-OLD'
+    code TEXT UNIQUE NOT NULL,                 -- 'CLIENT-A-MAIN'
     name TEXT NOT NULL,
     start_date DATE,
     end_date DATE,
@@ -95,8 +95,8 @@ ALTER TABLE locations ADD COLUMN IF NOT EXISTS qr_token TEXT UNIQUE;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS facility_id TEXT REFERENCES facilities(id) ON DELETE SET NULL;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS zone_id TEXT REFERENCES zones(id) ON DELETE SET NULL;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS parent_asset_id TEXT REFERENCES assets(id) ON DELETE SET NULL;
-ALTER TABLE assets ADD COLUMN IF NOT EXISTS nesting_reference TEXT;  -- e.g. 'ADEC/F010-PS-DB-81'
-ALTER TABLE assets ADD COLUMN IF NOT EXISTS position_code TEXT;      -- e.g. 'ADEC-MAIN'
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS nesting_reference TEXT;  -- e.g. 'CLA/F010-PS-DB-01'
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS position_code TEXT;      -- e.g. 'MAIN'
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS barcode TEXT;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS purchase_cost NUMERIC(12,2);
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS expected_life_years INTEGER;
