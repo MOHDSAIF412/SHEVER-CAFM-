@@ -32,44 +32,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     let cancelled = false;
 
-    // Re-read the signed-in user's profile from the cloud on start-up, so a
-    // role, name or deactivation changed on another device takes effect here.
-    const revalidate = async () => {
-      const cached = localStorage.getItem('shever_auth_user');
-      if (cached && isSupabaseConfigured()) {
-        try {
-          const parsed = JSON.parse(cached);
-          const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', parsed.id)
-            .maybeSingle();
+    // The signed-in user comes from the Supabase Auth session, never from
+    // localStorage alone: the database checks the session's token on every
+    // request, so a hand-edited local copy cannot grant access.
+    const loadProfileFor = async (authUserId: string) => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('auth_user_id', authUserId)
+        .maybeSingle();
+      return data as UserProfile | null;
+    };
 
+    const revalidate = async () => {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const authUser = sessionData.session?.user;
+          const profile = authUser ? await loadProfileFor(authUser.id) : null;
           if (cancelled) return;
-          if (data && data.is_active === false) {
-            localStorage.removeItem('shever_auth_user');
+          if (profile && profile.is_active !== false) {
+            setUser(profile);
+            localStorage.setItem('shever_auth_user', JSON.stringify(profile));
+          } else {
+            if (authUser) await supabase.auth.signOut();
             setUser(null);
-          } else if (data) {
-            setUser(data as UserProfile);
-            localStorage.setItem('shever_auth_user', JSON.stringify(data));
+            localStorage.removeItem('shever_auth_user');
           }
         } catch (e) {
-          // Offline: keep the cached session rather than locking the user out.
+          // Offline: keep the cached profile; the database still requires the
+          // stored session token for any read or write.
         }
       }
       if (!cancelled) setLoading(false);
     };
 
     revalidate();
+
+    const { data: sub } = isSupabaseConfigured()
+      ? supabase.auth.onAuthStateChange((event) => {
+          if (event === 'SIGNED_OUT') {
+            setUser(null);
+            localStorage.removeItem('shever_auth_user');
+          }
+        })
+      : { data: null };
+
     return () => {
       cancelled = true;
+      sub?.subscription.unsubscribe();
     };
   }, []);
 
   /**
-   * Credentials are verified by the database (app_login RPC), never in the
-   * browser. That is what makes a password change on one device take effect
-   * everywhere — and why a stale local copy can no longer let anyone in.
+   * Sign-in goes through Supabase Auth. The identifier may be an email or an
+   * employee ID; an employee ID is turned into its email by cafm_login_email.
    */
   const login = async (identifier: string, inputPassword?: string): Promise<boolean> => {
     setLoading(true);
@@ -78,26 +95,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cleanId = identifier.trim().toLowerCase();
 
       if (isSupabaseConfigured()) {
-        const { data, error: rpcError } = await supabase.rpc('app_login', {
-          p_identifier: cleanId,
-          p_password: inputPassword || '',
-        });
+        let email = cleanId;
+        if (!cleanId.includes('@')) {
+          const { data: found } = await supabase.rpc('cafm_login_email', { p_identifier: cleanId });
+          if (!found) {
+            setError('Incorrect username or password.');
+            return false;
+          }
+          email = String(found);
+        }
 
-        if (rpcError) {
-          // A missing function means the database migration has not been run.
-          const missingFn =
-            rpcError.code === 'PGRST202' || /app_login/i.test(rpcError.message || '');
+        const { data: signIn, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password: inputPassword || '',
+        });
+        if (signInError || !signIn.user) {
           setError(
-            missingFn
-              ? 'The server is not set up yet. Run database/05_cloud_sync_fix.sql in the Supabase SQL Editor.'
-              : `Sign-in failed: ${rpcError.message}`
+            /fetch|network/i.test(signInError?.message || '')
+              ? `Sign-in failed: ${signInError?.message}`
+              : 'Incorrect username or password.'
           );
           return false;
         }
 
-        const profile = Array.isArray(data) ? data[0] : data;
-        if (!profile) {
-          setError('Incorrect username or password.');
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('auth_user_id', signIn.user.id)
+          .maybeSingle();
+
+        if (!profile || profile.is_active === false) {
+          await supabase.auth.signOut();
+          setError('This account does not have access to the CAFM. Contact your administrator.');
           return false;
         }
 
