@@ -301,7 +301,7 @@ export const BuildingsList: React.FC = () => {
             <form onSubmit={handleAddBuilding} className="space-y-3 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Building Name *</label>
-                <input type="text" required value={bldName} onChange={(e) => setBldName(e.target.value)} placeholder="e.g. Shever Tower - Business Bay" className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none" />
+                <input type="text" required value={bldName} onChange={(e) => setBldName(e.target.value)} placeholder="e.g. Tower A - Business Bay" className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:outline-none" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

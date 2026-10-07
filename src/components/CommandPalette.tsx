@@ -237,7 +237,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
               <kbd className="font-semibold text-slate-600 dark:text-slate-400">↵</kbd> to select
             </span>
           </div>
-          <span>Shever Command Palette</span>
+          <span>OCS Command Palette</span>
         </div>
       </div>
     </div>

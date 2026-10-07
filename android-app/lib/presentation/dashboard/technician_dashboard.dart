@@ -27,7 +27,7 @@ class TechnicianDashboard extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             const Text(
-              'SHEVER CAFM',
+              'OCS CAFM',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1),
             ),
           ],

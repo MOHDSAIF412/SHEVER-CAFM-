@@ -68,7 +68,7 @@ export const Login: React.FC = () => {
       {/* ------------------------------------------------------------------ */}
       {/* Brand panel                                                        */}
       {/* ------------------------------------------------------------------ */}
-      <div className="relative hidden overflow-hidden border-r border-slate-800/60 bg-slate-950 p-10 text-white lg:flex lg:w-[46%] lg:flex-col xl:p-14">
+      <div className="relative hidden overflow-hidden border-r border-teal-900 bg-ocs-blue p-10 text-white lg:flex lg:w-[46%] lg:flex-col xl:p-14">
         {/* Ambient brand light */}
         <div
           aria-hidden
@@ -100,15 +100,15 @@ export const Login: React.FC = () => {
         {/* Brand lockup */}
         <div className="relative z-10 flex items-center gap-3.5">
           <img
-            src="/shever-logo.png"
-            alt="Shever Technical Services"
-            className="h-12 w-12 rounded-xl object-contain shadow-lg ring-1 ring-white/15"
+            src="/ocs-logo-white.png"
+            alt="OCS — to be your best"
+            className="h-14 w-auto object-contain"
           />
-          <div>
-            <span className="block text-[15px] font-bold leading-tight tracking-[0.18em] text-white">
-              SHEVER TECHNICAL
+          <div className="border-l border-white/20 pl-3.5">
+            <span className="block text-[15px] font-bold leading-tight text-white">
+              CAFM
             </span>
-            <span className="text-[11px] font-medium tracking-wide text-teal-400">
+            <span className="text-[11px] font-semibold tracking-wide text-orange-400">
               Facilities Management Platform
             </span>
           </div>
@@ -118,9 +118,9 @@ export const Login: React.FC = () => {
         <div className="relative z-10 my-auto max-w-lg py-10">
           <h2 className="text-4xl font-bold leading-[1.15] tracking-tight text-white xl:text-[2.75rem]">
             Every asset, work order and
-            <span className="text-teal-400"> inspection</span> in one place.
+            <span className="text-orange-500"> inspection</span> in one place.
           </h2>
-          <p className="mt-5 max-w-md text-sm leading-relaxed text-slate-400">
+          <p className="mt-5 max-w-md text-sm leading-relaxed text-teal-100/80">
             The operations platform your engineers, supervisors and clients all work
             from &mdash; from the moment a fault is reported to the signed-off report.
           </p>
@@ -128,12 +128,12 @@ export const Login: React.FC = () => {
           <ul className="mt-10 space-y-6">
             {HIGHLIGHTS.map(({ icon: Icon, title, body }) => (
               <li key={title} className="flex gap-4">
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-teal-400/20 bg-teal-400/10">
-                  <Icon className="h-4 w-4 text-teal-400" />
+                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-orange-400/30 bg-orange-500/15">
+                  <Icon className="h-4 w-4 text-orange-400" />
                 </span>
                 <div>
                   <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="mt-0.5 text-[13px] leading-relaxed text-slate-400">{body}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-teal-100/80">{body}</p>
                 </div>
               </li>
             ))}
@@ -141,9 +141,9 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <div className="relative z-10 flex items-center justify-between border-t border-white/10 pt-6 text-[12px] text-slate-500">
+        <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-6 text-[12px] text-teal-200">
           <span>Dubai, United Arab Emirates</span>
-          <span>&copy; 2026 Shever Technical Services</span>
+          <span>&copy; 2026 OCS</span>
         </div>
       </div>
 
@@ -155,12 +155,17 @@ export const Login: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5 lg:hidden">
             <img
-              src="/shever-logo.png"
-              alt="Shever Technical Services"
-              className="h-9 w-9 rounded-lg object-contain"
+              src="/ocs-logo.png"
+              alt="OCS"
+              className="h-9 w-auto object-contain dark:hidden"
+            />
+            <img
+              src="/ocs-logo-white.png"
+              alt="OCS"
+              className="hidden h-9 w-auto object-contain dark:block"
             />
             <span className="text-sm font-bold tracking-wide text-slate-900 dark:text-white">
-              SHEVER TECHNICAL
+              CAFM
             </span>
           </div>
 
@@ -211,7 +216,7 @@ export const Login: React.FC = () => {
                   autoComplete="username"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
-                  placeholder="you@shevertechnical.com"
+                  placeholder="you@company.com"
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-11 pr-3.5 text-sm text-slate-900 placeholder-slate-400 transition-shadow focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-teal-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 />
               </div>

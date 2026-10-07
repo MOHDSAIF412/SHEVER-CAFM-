@@ -6,7 +6,7 @@ void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     await tester.pumpWidget(
       const ProviderScope(
-        child: SheverCafmApp(),
+        child: OcsCafmApp(),
       ),
     );
     expect(find.text('SHEVER TECHNICAL'), findsOneWidget);

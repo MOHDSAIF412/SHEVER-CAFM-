@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Brand Teal
-  static const Color primary = Color(0xFF0D9488);
-  static const Color primaryDark = Color(0xFF0F766E);
-  static const Color primaryLight = Color(0xFF2DD4BF);
-  static const Color accent = Color(0xFF14B8A6);
+  // OCS Brand Guidelines 6.0: Blue primary, Orange accent
+  static const Color primary = Color(0xFF293771);
+  static const Color primaryDark = Color(0xFF1C264E);
+  static const Color primaryLight = Color(0xFF7482C2);
+  static const Color accent = Color(0xFFF15F22);
 
   // Background & Surfaces
   static const Color bgDark = Color(0xFF0F172A);
@@ -17,11 +17,11 @@ class AppColors {
   static const Color emergency = Color(0xFFEF4444);
   static const Color high = Color(0xFFF97316);
   static const Color medium = Color(0xFFF59E0B);
-  static const Color low = Color(0xFF10B981);
+  static const Color low = Color(0xFF00AE4D);
 
   static const Color inProgress = Color(0xFF3B82F6);
-  static const Color completed = Color(0xFF10B981);
-  static const Color overdue = Color(0xFFEF4444);
+  static const Color completed = Color(0xFF00AE4D);
+  static const Color overdue = Color(0xFFB91C2A);
   static const Color pending = Color(0xFF8B5CF6);
 }
 

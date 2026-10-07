@@ -101,16 +101,18 @@ export const ReportsCenter: React.FC = () => {
     const doc = new jsPDF();
 
     // Header Banner
-    doc.setFillColor(15, 23, 42);
+    doc.setFillColor(41, 55, 113); // OCS Blue
     doc.rect(0, 0, 210, 32, 'F');
+    doc.setFillColor(241, 95, 34); // OCS Orange rule
+    doc.rect(0, 32, 210, 1.2, 'F');
 
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text('SHEVER TECHNICAL SERVICES', 14, 14);
+    doc.text('OCS FACILITIES SERVICES', 14, 14);
 
     doc.setFontSize(8.5);
-    doc.setTextColor(45, 212, 191);
+    doc.setTextColor(248, 158, 118);
     doc.text('FACILITIES MANAGEMENT — EXECUTIVE OPERATIONS REPORT', 14, 20);
 
     doc.setFontSize(7.5);
@@ -155,7 +157,7 @@ export const ReportsCenter: React.FC = () => {
       styles: { fontSize: 7, cellPadding: 2.5 },
     });
 
-    doc.save(`Shever_Operations_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`OCS_Operations_Report_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (

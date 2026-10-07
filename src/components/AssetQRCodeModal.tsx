@@ -21,8 +21,8 @@ export const AssetQRCodeModal: React.FC<{ asset: Asset; onClose: () => void }> =
         {/* Printable Badge Area */}
         <div className="p-4 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl space-y-3 print:border-solid print:m-0">
           <div className="flex items-center justify-center space-x-2">
-            <img src="/shever-logo.png" alt="Shever" className="h-6 object-contain" />
-            <span className="text-xs font-extrabold text-slate-900 tracking-wide">SHEVER TECHNICAL</span>
+            <img src="/ocs-logo.png" alt="OCS" className="h-7 object-contain" />
+            <span className="text-xs font-bold text-ocs-blue tracking-wide">CAFM ASSET</span>
           </div>
 
           <div className="flex justify-center p-3 bg-white rounded-lg shadow-sm">
