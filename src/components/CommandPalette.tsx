@@ -49,7 +49,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
   const navigationItems = [
     { label: 'Create New Work Order', path: '/work-orders/new', icon: PlusCircle, category: 'Quick Action' },
     { label: 'Work Orders Dashboard', path: '/work-orders', icon: ClipboardList, category: 'Navigation' },
-    { label: 'PPM Schedules & Calendar', path: '/ppm/schedules', icon: CalendarCheck2, category: 'Navigation' },
+    { label: 'PPM Planner', path: '/ppm/planner', icon: CalendarCheck2, category: 'Navigation' },
     { label: 'Asset Intelligence Registry', path: '/assets', icon: Boxes, category: 'Navigation' },
     { label: 'Facility Hierarchy', path: '/facilities', icon: Building2, category: 'Navigation' },
     { label: 'Reports & Analytics Center', path: '/reports', icon: FileSpreadsheet, category: 'Navigation' },
@@ -120,7 +120,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       label: `${p.schedule_number} — ${p.plan?.title || 'PPM Run'}`,
       sub: `Due: ${p.due_date} | ${p.status}`,
       icon: CalendarCheck2,
-      path: `/ppm/schedules`,
+      path: `/ppm/planner`,
     })),
   ];
 

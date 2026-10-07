@@ -1,273 +1,241 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  CalendarCheck2,
-  AlertTriangle,
-  Clock,
-  CheckCircle2,
-  ArrowUpRight,
-  TrendingUp,
-  FileSpreadsheet,
-  PlusCircle,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
-  Boxes,
-  ShieldCheck,
-} from 'lucide-react';
+import { AlertTriangle, CalendarDays, CheckCircle2, Clock, Loader2 } from 'lucide-react';
+import { PpmPlan, VISIT_META, VisitState, ppmService, visitState, visitsBetween } from '../../api/ppm';
+import { Hierarchy, hierarchyService } from '../../api/hierarchy';
 import { cafmDataService } from '../../api/supabase';
-import { PPMSchedule, PPMPlan } from '../../types';
-import { exportPPMToExcel } from '../../utils/excelExporter';
+import { Category, WorkOrder } from '../../types';
+
+/**
+ * PPM compliance: of the visits that were due, how many were done on time,
+ * done late, or are still outstanding. Visits are judged by their due date;
+ * "done" means the technician marked the work done.
+ */
+
+type Period = 'month' | 'quarter' | 'ytd' | '12m';
+const PERIODS: { id: Period; label: string }[] = [
+  { id: 'month', label: 'This month' },
+  { id: 'quarter', label: 'This quarter' },
+  { id: 'ytd', label: 'Year to date' },
+  { id: '12m', label: 'Last 12 months' },
+];
+
+const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+const range = (p: Period): [string, string] => {
+  const now = new Date();
+  const today = iso(new Date(now.getTime() + 4 * 3600_000));
+  const y = now.getFullYear();
+  if (p === 'month') return [`${today.slice(0, 7)}-01`, today];
+  if (p === 'quarter') return [iso(new Date(Date.UTC(y, Math.floor(now.getMonth() / 3) * 3, 1))), today];
+  if (p === 'ytd') return [`${y}-01-01`, today];
+  return [iso(new Date(Date.UTC(y - 1, now.getMonth(), now.getDate() + 1))), today];
+};
+
+interface Row {
+  plan: PpmPlan;
+  date: string;
+  state: VisitState;
+  job?: WorkOrder;
+  building?: string;
+  category?: string;
+}
 
 export const PPMDashboard: React.FC = () => {
-  const [schedules, setSchedules] = useState<PPMSchedule[]>([]);
-  const [plans, setPlans] = useState<PPMPlan[]>([]);
-  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
-  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<Period>('month');
+  const [plans, setPlans] = useState<PpmPlan[] | null>(null);
+  const [jobs, setJobs] = useState<WorkOrder[]>([]);
+  const [h, setH] = useState<Hierarchy | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const [scheds, plns] = await Promise.all([
-          cafmDataService.getPPMSchedules(),
-          cafmDataService.getPPMPlans(),
-        ]);
-        setSchedules(scheds);
-        setPlans(plns);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    Promise.all([ppmService.plans(), ppmService.jobs(), hierarchyService.loadAll(), cafmDataService.getCategories()]).then(([p, j, hier, c]) => {
+      setPlans(p);
+      setJobs(j);
+      setH(hier);
+      setCategories(c);
+    });
   }, []);
 
-  const total = schedules.length;
-  const completed = schedules.filter((s) => s.status === 'Completed' || s.status === 'Closed').length;
-  const overdue = schedules.filter((s) => s.is_overdue || s.status === 'Overdue').length;
-  const scheduled = schedules.filter((s) => s.status === 'Scheduled' || s.status === 'Assigned').length;
-  const complianceRate = total > 0 ? Math.round((completed / total) * 100) : 94.2;
+  const data = useMemo(() => {
+    if (!plans || !h) return null;
+    const [from, to] = range(period);
+    const rows: Row[] = [];
+    plans.forEach((p) => {
+      const created = (p.created_at || p.start_date).slice(0, 10);
+      const actual = jobs.filter((j) => j.ppm_plan_id === p.id && j.ppm_due_date && j.ppm_due_date >= from && j.ppm_due_date <= to);
+      const planned = p.is_active === false ? [] : visitsBetween(p, from, to).filter((d) => d >= created);
+      const dates = [...new Set([...planned, ...actual.map((j) => j.ppm_due_date!)])];
+      const asset = h.assets.find((a) => a.id === p.asset_id);
+      const bId = p.building_id || asset?.building_id;
+      dates.forEach((d) => {
+        const job = actual.find((j) => j.ppm_due_date === d);
+        rows.push({
+          plan: p,
+          date: d,
+          job,
+          state: visitState(d, job),
+          building: h.buildings.find((b) => b.id === bId)?.name || 'No building',
+          category: categories.find((c) => c.id === (p.category_id || asset?.category_id))?.name || 'Other',
+        });
+      });
+    });
+    const counted = rows.filter((r) => r.state !== 'cancelled' && r.state !== 'planned' && r.state !== 'open');
+    const onTime = counted.filter((r) => r.state === 'on_time').length;
+    const late = counted.filter((r) => r.state === 'late').length;
+    const missed = counted.filter((r) => r.state === 'overdue').length;
+    const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : null);
 
-  // Calendar mock days
-  const calendarDays = Array.from({ length: 31 }, (_, i) => i + 1);
+    const group = (key: 'building' | 'category') => {
+      const m = new Map<string, { due: number; onTime: number; late: number; missed: number }>();
+      counted.forEach((r) => {
+        const k = r[key] || '—';
+        const g = m.get(k) || { due: 0, onTime: 0, late: 0, missed: 0 };
+        g.due++;
+        if (r.state === 'on_time') g.onTime++;
+        if (r.state === 'late') g.late++;
+        if (r.state === 'overdue') g.missed++;
+        m.set(k, g);
+      });
+      return [...m.entries()].map(([name, g]) => ({ name, ...g, pct: pct(g.onTime, g.due) })).sort((a, b) => (a.pct ?? 101) - (b.pct ?? 101));
+    };
+
+    // Coming up regardless of period: next 14 days.
+    const today = range('month')[1];
+    const in14 = iso(new Date(new Date(`${today}T00:00:00Z`).getTime() + 14 * 86_400_000));
+    const upcoming: Row[] = [];
+    plans.filter((p) => p.is_active !== false).forEach((p) => {
+      visitsBetween(p, today, in14).forEach((d) => {
+        const job = jobs.find((j) => j.ppm_plan_id === p.id && j.ppm_due_date === d);
+        upcoming.push({ plan: p, date: d, job, state: visitState(d, job) });
+      });
+    });
+
+    return {
+      due: counted.length,
+      onTime,
+      late,
+      missed,
+      compliance: pct(onTime, counted.length),
+      completion: pct(onTime + late, counted.length),
+      byBuilding: group('building'),
+      byCategory: group('category'),
+      overdue: rows.filter((r) => r.state === 'overdue').sort((a, b) => a.date.localeCompare(b.date)),
+      upcoming: upcoming.filter((r) => r.state !== 'on_time' && r.state !== 'late').sort((a, b) => a.date.localeCompare(b.date)).slice(0, 12),
+    };
+  }, [plans, jobs, h, categories, period]);
+
+  if (!data) {
+    return (
+      <div className="flex h-64 items-center justify-center text-slate-400">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading compliance…
+      </div>
+    );
+  }
+
+  const fmt = (d: string) => new Date(`${d}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  const tone = (p: number | null) => (p == null ? 'text-slate-400' : p >= 95 ? 'text-emerald-600' : p >= 85 ? 'text-orange-500' : 'text-ocs-red');
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-            PPM & Preventive Compliance Command
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Automated recurring maintenance cycles, threshold inspection checklists, and SLA compliance
-          </p>
+          <h1 className="text-lg font-bold text-ocs-blue dark:text-white">PPM Compliance</h1>
+          <p className="text-xs text-slate-500">Of the PPM visits due so far in the period: done on time, done late, or still not done.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => exportPPMToExcel(schedules)}
-            className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Export PPM</span>
-          </button>
-          <Link
-            to="/ppm/plans"
-            className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 shadow-sm transition-colors"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>Manage PPM Plans</span>
-          </Link>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-            Total PPM Schedules
-          </span>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-slate-900 dark:text-white">{total}</span>
-            <p className="text-[10px] text-slate-400 mt-0.5">{plans.length} active recurring plans</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
-            Upcoming / Active
-          </span>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-teal-600 dark:text-teal-400">{scheduled}</span>
-            <p className="text-[10px] text-slate-400 mt-0.5">Due in the next 30 days</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/20 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">
-            Overdue PPM
-          </span>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-red-600 dark:text-red-400">{overdue}</span>
-            <p className="text-[10px] text-red-500/80 mt-0.5">Require immediate inspection</p>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-          <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-            Compliance Rate
-          </span>
-          <div className="mt-2">
-            <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400">{complianceRate}%</span>
-            <p className="text-[10px] text-slate-400 mt-0.5">+1.8% vs last quarter</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive PPM Calendar Matrix View */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div className="flex items-center space-x-2">
-            <Calendar className="w-4 h-4 text-teal-600" />
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-              Preventive Maintenance Calendar — August 2026
-            </h3>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5 text-xs font-bold">
-              <button
-                onClick={() => setCalendarView('month')}
-                className={`px-2.5 py-1 rounded-md transition-colors ${
-                  calendarView === 'month'
-                    ? 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-                }`}
-              >
-                Month
-              </button>
-              <button
-                onClick={() => setCalendarView('week')}
-                className={`px-2.5 py-1 rounded-md transition-colors ${
-                  calendarView === 'week'
-                    ? 'bg-white dark:bg-slate-900 text-teal-600 dark:text-teal-400 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-                }`}
-              >
-                Week
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Month Grid */}
-        <div className="grid grid-cols-7 gap-1.5 text-center text-xs">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-            <div key={day} className="py-1 text-[11px] font-bold text-slate-400 uppercase">
-              {day}
-            </div>
+        <div className="flex rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900">
+          {PERIODS.map((p) => (
+            <button key={p.id} onClick={() => setPeriod(p.id)} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${period === p.id ? 'bg-ocs-blue text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+              {p.label}
+            </button>
           ))}
-
-          {calendarDays.map((d) => {
-            const hasTask = d === 15 || d === 24 || d === 28;
-            const isOverdue = d === 15;
-            return (
-              <div
-                key={d}
-                className={`min-h-[64px] p-1.5 rounded-xl border transition-all text-left flex flex-col justify-between ${
-                  d === 24
-                    ? 'border-teal-500 bg-teal-50/40 dark:bg-teal-950/20'
-                    : 'border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-900/40'
-                }`}
-              >
-                <span className={`text-[10px] font-extrabold ${d === 24 ? 'text-teal-600 dark:text-teal-400' : 'text-slate-500'}`}>
-                  {d}
-                </span>
-                {hasTask && (
-                  <div
-                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold truncate ${
-                      isOverdue
-                        ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
-                        : 'bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-400'
-                    }`}
-                  >
-                    {isOverdue ? 'Overdue PPM' : 'AHU-001 Check'}
-                  </div>
-                )}
-              </div>
-            );
-          })}
         </div>
       </div>
 
-      {/* Schedules Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <h3 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-              Preventive Maintenance Schedule Queue
-            </h3>
-            <p className="text-[11px] text-slate-400">Next scheduled maintenance inspection executions</p>
-          </div>
-          <Link
-            to="/ppm/schedules"
-            className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline flex items-center"
-          >
-            <span>View All Schedules</span>
-            <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
-          </Link>
+      <div className="grid gap-3 sm:grid-cols-5">
+        <div className="enterprise-card p-4 sm:col-span-1">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Compliance</div>
+          <div className={`text-3xl font-bold ${tone(data.compliance)}`}>{data.compliance == null ? '—' : `${data.compliance}%`}</div>
+          <div className="text-[11px] text-slate-500">done on time</div>
         </div>
+        <Stat icon={CalendarDays} label="Visits due" value={data.due} tone="text-ocs-blue dark:text-white" />
+        <Stat icon={CheckCircle2} label="On time" value={data.onTime} tone="text-emerald-600" />
+        <Stat icon={Clock} label="Late" value={data.late} tone="text-orange-500" />
+        <Stat icon={AlertTriangle} label="Not done (overdue)" value={data.missed} tone="text-ocs-red" />
+      </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-950/60 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200/80 dark:border-slate-800">
-              <tr>
-                <th className="px-5 py-3">Schedule #</th>
-                <th className="px-5 py-3">Plan Title</th>
-                <th className="px-5 py-3">Asset Target</th>
-                <th className="px-5 py-3">Frequency</th>
-                <th className="px-5 py-3">Due Date</th>
-                <th className="px-5 py-3">Technician</th>
-                <th className="px-5 py-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-              {schedules.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                  <td className="px-5 py-3.5 font-bold text-teal-700 dark:text-teal-400">
-                    {s.schedule_number}
-                  </td>
-                  <td className="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-200">
-                    {s.plan?.title || 'Inspection Routine'}
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">
-                      {s.plan?.asset?.name || 'Central Equipment'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">{s.plan?.frequency || 'Monthly'}</td>
-                  <td className="px-5 py-3.5 font-semibold text-slate-900 dark:text-slate-100">{s.due_date}</td>
-                  <td className="px-5 py-3.5 text-slate-600 dark:text-slate-400">
-                    {s.assigned_technician?.full_name || 'Unassigned'}
-                  </td>
-                  <td className="px-5 py-3.5">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        s.is_overdue || s.status === 'Overdue'
-                          ? 'bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
-                          : s.status === 'Completed'
-                          ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-400'
-                      }`}
-                    >
-                      {s.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Breakdown title="By building" rows={data.byBuilding} tone={tone} />
+        <Breakdown title="By trade" rows={data.byCategory} tone={tone} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <VisitList title={`Overdue PPM (${data.overdue.length})`} rows={data.overdue} fmt={fmt} empty="Nothing overdue." />
+        <VisitList title="Next 14 days" rows={data.upcoming} fmt={fmt} empty="No PPM due in the next 14 days." />
       </div>
     </div>
   );
 };
+
+const Stat: React.FC<{ icon: React.ElementType; label: string; value: number; tone: string }> = ({ icon: Icon, label, value, tone }) => (
+  <div className="enterprise-card flex items-center gap-3 p-4">
+    <Icon className={`h-5 w-5 ${tone}`} />
+    <div>
+      <div className={`text-2xl font-bold ${tone}`}>{value}</div>
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{label}</div>
+    </div>
+  </div>
+);
+
+const Breakdown: React.FC<{
+  title: string;
+  rows: { name: string; due: number; onTime: number; late: number; missed: number; pct: number | null }[];
+  tone: (p: number | null) => string;
+}> = ({ title, rows, tone }) => (
+  <div className="enterprise-card p-4">
+    <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h3>
+    {rows.length === 0 ? (
+      <p className="py-6 text-center text-xs text-slate-500">No visits due in this period.</p>
+    ) : (
+      <div className="space-y-2.5">
+        {rows.map((r) => (
+          <div key={r.name}>
+            <div className="flex justify-between text-xs">
+              <span className="font-semibold text-slate-700 dark:text-slate-200">{r.name}</span>
+              <span className={`font-bold ${tone(r.pct)}`}>{r.pct}% <span className="font-normal text-slate-400">of {r.due}</span></span>
+            </div>
+            <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="bg-emerald-500" style={{ width: `${(r.onTime / r.due) * 100}%` }} />
+              <div className="bg-orange-500" style={{ width: `${(r.late / r.due) * 100}%` }} />
+              <div className="bg-ocs-red" style={{ width: `${(r.missed / r.due) * 100}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
+const VisitList: React.FC<{ title: string; rows: Row[]; fmt: (d: string) => string; empty: string }> = ({ title, rows, fmt, empty }) => (
+  <div className="enterprise-card p-4">
+    <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">{title}</h3>
+    {rows.length === 0 ? (
+      <p className="py-6 text-center text-xs text-slate-500">{empty}</p>
+    ) : (
+      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        {rows.slice(0, 15).map((r) => {
+          const body = (
+            <div className="flex items-center gap-3 py-2 text-xs">
+              <span className={`inline-flex h-6 w-14 shrink-0 items-center justify-center rounded text-[10px] font-bold ${VISIT_META[r.state].cls}`}>{fmt(r.date)}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold text-slate-800 dark:text-slate-100">{r.plan.title}</span>
+                <span className="text-[10px] text-slate-500">{r.plan.ppm_code} · {r.plan.frequency}{r.job ? ` · ${r.job.wo_number}` : ' · job not created yet'}</span>
+              </span>
+            </div>
+          );
+          return r.job ? <Link key={r.plan.id + r.date} to={`/work-orders/${r.job.id}`} className="block hover:bg-slate-50 dark:hover:bg-slate-800/40">{body}</Link> : <div key={r.plan.id + r.date}>{body}</div>;
+        })}
+      </div>
+    )}
+  </div>
+);

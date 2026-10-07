@@ -44,8 +44,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
       title: 'OPERATIONS',
       items: [
         { name: 'Work Orders', path: '/work-orders', icon: ClipboardList },
-        { name: 'PPM Schedules', path: '/ppm/schedules', icon: CalendarCheck2 },
         { name: 'PPM Plans', path: '/ppm/plans', icon: CalendarDays },
+        { name: 'PPM Planner', path: '/ppm/planner', icon: CalendarCheck2 },
         { name: 'PPM Checklists', path: '/ppm/checklists', icon: ClipboardCheck },
       ],
     },
