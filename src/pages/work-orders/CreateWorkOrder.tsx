@@ -10,7 +10,8 @@ import { Hierarchy, hierarchyService, roomPath } from '../../api/hierarchy';
 import { useAuth } from '../../context/AuthContext';
 import { formatDuration } from '../../utils/sla';
 import { PRIORITY_META, WO_TYPES } from '../../utils/woFlow';
-import { Category, SlaPolicy, SlaPriority, UserProfile, WorkOrderType } from '../../types';
+import { Category, Quote, SlaPolicy, SlaPriority, UserProfile, WorkOrderType } from '../../types';
+import { billingService } from '../../api/billing';
 
 /**
  * One page instead of a four-step wizard: what is wrong, where, how urgent,
@@ -58,6 +59,7 @@ export const CreateWorkOrder: React.FC = () => {
   const [source, setSource] = useState('Helpdesk');
   const [techId, setTechId] = useState('');
 
+  const [quote, setQuote] = useState<Quote | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -80,6 +82,17 @@ export const CreateWorkOrder: React.FC = () => {
       const a = params.get('asset') && hier.assets.find((x) => x.id === params.get('asset'));
       if (a) setRoomId(a.location_id);
     });
+    // Coming from an approved quote: this is the quoted job.
+    const qid = params.get('quote');
+    if (qid) {
+      billingService.quote(qid).then((q) => {
+        if (!q) return;
+        setQuote(q);
+        setWoType('Quoted');
+        setChargeable(true);
+        setDescription([`${q.title} (quote ${q.quote_number})`, q.description].filter(Boolean).join('\n'));
+      });
+    }
   }, []);
 
   const job = matrix?.jobs.find((j) => j.id === jobTypeId);
@@ -150,8 +163,12 @@ export const CreateWorkOrder: React.FC = () => {
     if (!categoryId) return setError('No categories are set up yet. Add one under Settings → Trades & Types.');
     setSaving(true);
     try {
+      const facility = h?.facilities.find((f) => f.id === building.facility_id);
       const wo = await workOrderService.create(
         {
+          contract_id: facility?.contract_id || null,
+          client_id: quote?.client_id || null,
+          quote_id: quote?.id || null,
           wo_type: woType,
           job_type_id: job?.id || null,
           trade: serviceType?.trade_code || null,
@@ -175,6 +192,7 @@ export const CreateWorkOrder: React.FC = () => {
         },
         policies
       );
+      if (quote) await billingService.linkQuoteToJob(quote.id, wo.id);
       navigate(`/work-orders/${wo.id}`, { replace: true });
     } catch (e: any) {
       setError(e?.message || 'Could not create the work order.');

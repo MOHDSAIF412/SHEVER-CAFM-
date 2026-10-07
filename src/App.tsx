@@ -23,6 +23,9 @@ import { UsersList } from './pages/users/UsersList';
 import { SystemSettings } from './pages/settings/SystemSettings';
 import { CostingSettings } from './pages/settings/CostingSettings';
 import { JobCostingReport } from './pages/reports/JobCostingReport';
+import { BillingHome } from './pages/billing/BillingHome';
+import { InvoiceDetail, QuoteDetail } from './pages/billing/BillingDocument';
+import { ClientsList } from './pages/billing/ClientsList';
 import { CategoriesList } from './pages/settings/CategoriesList';
 import { AuditLogs } from './pages/audit/AuditLogs';
 
@@ -102,6 +105,10 @@ export function App() {
               <Route path="settings/categories" element={<CategoriesList />} />
               <Route path="settings/costing" element={<CostingSettings />} />
               <Route path="costing" element={<JobCostingReport />} />
+              <Route path="billing" element={<BillingHome />} />
+              <Route path="billing/invoices/:id" element={<InvoiceDetail />} />
+              <Route path="billing/quotes/:id" element={<QuoteDetail />} />
+              <Route path="clients" element={<ClientsList />} />
               <Route path="audit" element={<AuditLogs />} />
               <Route path="audit-logs" element={<AuditLogs />} />
             </Route>

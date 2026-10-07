@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarX2, Check, HardHat, Loader2, Percent, Plus, Save, Trash2 } from 'lucide-react';
+import { CalendarX2, Check, HardHat, Loader2, Percent, Plus, Receipt, Save, Trash2 } from 'lucide-react';
+import { BillingSettings, billingService } from '../../api/billing';
 import { CostingSettings as Settings, GRADES, RATE_TYPES, WEEKDAYS, costingService } from '../../api/costing';
 import { useAuth } from '../../context/AuthContext';
 import { LabourRate, PublicHoliday, RateType } from '../../types';
@@ -19,6 +20,7 @@ export const CostingSettings: React.FC = () => {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
   const [trades, setTrades] = useState<{ code: string; name: string }[]>([]);
+  const [billing, setBilling] = useState<BillingSettings | null>(null);
   const [newGrade, setNewGrade] = useState('');
   const [hol, setHol] = useState({ date: '', name: '' });
   const [busy, setBusy] = useState('');
@@ -31,6 +33,7 @@ export const CostingSettings: React.FC = () => {
     setSettings(s);
     setHolidays(h);
     setTrades(t);
+    setBilling(await billingService.settings());
     setDirty(new Set());
   };
   useEffect(() => {
@@ -97,8 +100,8 @@ export const CostingSettings: React.FC = () => {
   return (
     <div className="mx-auto max-w-5xl space-y-5">
       <div>
-        <h1 className="text-lg font-bold text-ocs-blue dark:text-white">Rates & Costing</h1>
-        <p className="text-xs text-slate-500">How job time and materials are priced, in AED. Changes apply to new time; recorded lines keep their price.</p>
+        <h1 className="text-lg font-bold text-ocs-blue dark:text-white">Rates, Costing & Billing</h1>
+        <p className="text-xs text-slate-500">How job time and materials are priced, and how invoices are issued, in AED. Rate changes apply to new time; recorded lines keep their price.</p>
       </div>
 
       {msg && (
@@ -290,6 +293,43 @@ export const CostingSettings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Billing */}
+      {billing && (
+        <div className="enterprise-card space-y-4 p-5">
+          <h2 className="flex items-center gap-2 text-sm font-bold text-ocs-blue dark:text-white"><Receipt className="h-4 w-4 text-orange-500" /> Invoices & VAT</h2>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200 sm:col-span-1">
+              <input type="checkbox" checked={billing.vat_enabled} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, vat_enabled: e.target.checked })} className="h-4 w-4 accent-teal-600" />
+              Charge VAT
+            </label>
+            <Field label="VAT rate %">
+              <input type="number" step="0.5" value={billing.vat_rate} disabled={!isAdmin || !billing.vat_enabled} onChange={(e) => setBilling({ ...billing, vat_rate: Number(e.target.value) })} className="enterprise-input" />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="OCS TRN (shown on tax invoices)">
+                <input value={billing.company_trn} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, company_trn: e.target.value })} className="enterprise-input" placeholder="100xxxxxxxxxxx3" />
+              </Field>
+            </div>
+            <Field label="Invoice prefix"><input value={billing.invoice_prefix} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, invoice_prefix: e.target.value.toUpperCase() })} className="enterprise-input" /></Field>
+            <Field label="Quote prefix"><input value={billing.quote_prefix} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, quote_prefix: e.target.value.toUpperCase() })} className="enterprise-input" /></Field>
+            <Field label="Payment terms (days)"><input type="number" min="0" value={billing.payment_terms_days} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, payment_terms_days: Number(e.target.value) || 0 })} className="enterprise-input" /></Field>
+            <div />
+            <div className="sm:col-span-2">
+              <Field label="Company address (invoice header)"><textarea rows={3} value={billing.company_address} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, company_address: e.target.value })} className="enterprise-input" /></Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Bank details (printed on invoices)"><textarea rows={3} value={billing.bank_details} disabled={!isAdmin} onChange={(e) => setBilling({ ...billing, bank_details: e.target.value })} className="enterprise-input" placeholder={'Bank: …\nIBAN: AE…\nAccount name: …'} /></Field>
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500">VAT is applied to new invoices and quotes. With VAT on, invoices print as "Tax Invoice" with both TRNs.</p>
+          {isAdmin && (
+            <button onClick={() => run('billing', () => billingService.saveSettings(billing), 'Billing settings saved.')} disabled={busy === 'billing'} className="inline-flex items-center gap-1.5 rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-700 disabled:opacity-50">
+              {busy === 'billing' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Save billing settings
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

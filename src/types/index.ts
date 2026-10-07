@@ -229,6 +229,9 @@ export interface WorkOrder {
   symptoms?: string | null;
   is_chargeable?: boolean;
   billing_status?: string;
+  client_id?: string | null;
+  quote_id?: string | null;
+  invoice_id?: string | null;
   client_signoff_name?: string | null;
   client_signoff_at?: string | null;
   client_rating?: number | null;
@@ -444,6 +447,12 @@ export interface SystemSettings {
   weekend_days?: number[];
   vat_enabled?: boolean;
   vat_rate?: number;
+  company_trn?: string | null;
+  invoice_prefix?: string;
+  quote_prefix?: string;
+  payment_terms_days?: number;
+  bank_details?: string | null;
+  company_address?: string | null;
   updated_at: string;
 }
 
@@ -603,4 +612,99 @@ export interface StatusHistoryEntry {
   changed_by?: string | null;
   comments?: string | null;
   created_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Billing (database/15_billing.sql)
+// ---------------------------------------------------------------------------
+export interface Client {
+  id: string;
+  code: string;
+  name: string;
+  trn?: string | null;
+  billing_address?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  is_active?: boolean;
+  created_at?: string;
+}
+
+export interface Contract {
+  id: string;
+  client_id: string;
+  code: string;
+  name: string;
+  contract_type?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  default_markup_pct?: number | null;
+  callout_fee?: number | null;
+  status?: string;
+  created_at?: string;
+}
+
+export type BillingLineType = 'Labour' | 'Material' | 'Subcontract' | 'Call-out' | 'Minimum Charge' | 'Other';
+
+export interface BillingLine {
+  id: string;
+  invoice_id?: string | null;
+  quote_id?: string | null;
+  work_order_id?: string | null;
+  line_type: BillingLineType;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount?: number;
+  sort_order?: number;
+}
+
+export type InvoiceStatus = 'Draft' | 'Issued' | 'Paid' | 'Cancelled';
+
+export interface Invoice {
+  id: string;
+  invoice_number: string;
+  client_id?: string | null;
+  contract_id?: string | null;
+  status: InvoiceStatus;
+  issue_date?: string | null;
+  due_date?: string | null;
+  issued_at?: string | null;
+  paid_at?: string | null;
+  payment_ref?: string | null;
+  client_po_number?: string | null;
+  cancel_reason?: string | null;
+  subtotal: number;
+  vat_rate: number;
+  vat_amount: number;
+  total: number;
+  currency?: string;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+}
+
+export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected' | 'Expired';
+
+export interface Quote {
+  id: string;
+  quote_number: string;
+  client_id?: string | null;
+  contract_id?: string | null;
+  facility_id?: string | null;
+  work_order_id?: string | null;
+  title: string;
+  description?: string | null;
+  status: QuoteStatus;
+  valid_until?: string | null;
+  client_po_number?: string | null;
+  subtotal: number;
+  vat_rate: number;
+  vat_amount: number;
+  total: number;
+  notes?: string | null;
+  sent_at?: string | null;
+  approved_at?: string | null;
+  created_by?: string | null;
+  created_at?: string;
 }

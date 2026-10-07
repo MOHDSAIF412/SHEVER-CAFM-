@@ -20,7 +20,7 @@ interface LoadedImage {
  * Returns null rather than throwing - a report missing one photo is still worth
  * producing.
  */
-const loadImage = async (url?: string | null): Promise<LoadedImage | null> => {
+export const loadImage = async (url?: string | null): Promise<LoadedImage | null> => {
   if (!url) return null;
   try {
     const res = await fetch(url, { mode: 'cors' });
