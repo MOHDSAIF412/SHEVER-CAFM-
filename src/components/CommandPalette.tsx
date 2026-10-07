@@ -15,7 +15,10 @@ import {
   X,
 } from 'lucide-react';
 import { cafmDataService } from '../api/supabase';
-import { WorkOrder, Asset, PPMSchedule, Building } from '../types';
+import { PpmPlan, ppmService } from '../api/ppm';
+import { useAuth } from '../context/AuthContext';
+import { priorityOf } from '../utils/woFlow';
+import { WorkOrder, Asset, Building } from '../types';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -24,10 +27,12 @@ interface CommandPaletteProps {
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { isAdmin, isManager, isSupervisor } = useAuth();
+  const lead = isAdmin || isManager || isSupervisor;
   const [query, setQuery] = useState('');
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [schedules, setSchedules] = useState<PPMSchedule[]>([]);
+  const [plans, setPlans] = useState<PpmPlan[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +42,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
       setTimeout(() => inputRef.current?.focus(), 50);
       cafmDataService.getWorkOrders().then(setWorkOrders);
       cafmDataService.getAssets().then(setAssets);
-      cafmDataService.getPPMSchedules().then(setSchedules);
+      ppmService.plans().then(setPlans);
       cafmDataService.getBuildings().then(setBuildings);
     } else {
       setQuery('');
@@ -47,14 +52,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
 
   // Static navigation shortcuts
   const navigationItems = [
-    { label: 'Create New Work Order', path: '/work-orders/new', icon: PlusCircle, category: 'Quick Action' },
-    { label: 'Work Orders Dashboard', path: '/work-orders', icon: ClipboardList, category: 'Navigation' },
-    { label: 'PPM Planner', path: '/ppm/planner', icon: CalendarCheck2, category: 'Navigation' },
-    { label: 'Asset Intelligence Registry', path: '/assets', icon: Boxes, category: 'Navigation' },
-    { label: 'Facility Hierarchy', path: '/facilities', icon: Building2, category: 'Navigation' },
-    { label: 'Reports & Analytics Center', path: '/reports', icon: FileSpreadsheet, category: 'Navigation' },
-    { label: 'User & Access Management', path: '/users', icon: Users, category: 'Navigation' },
-    { label: 'System Configuration', path: '/settings', icon: Settings, category: 'Navigation' },
+    { label: 'New work order', path: '/work-orders/new', icon: PlusCircle, category: 'Quick action' },
+    { label: 'Work orders', path: '/work-orders', icon: ClipboardList, category: 'Go to' },
+    { label: 'PPM plans', path: '/ppm/plans', icon: CalendarCheck2, category: 'Go to' },
+    { label: 'PPM planner', path: '/ppm/planner', icon: CalendarCheck2, category: 'Go to' },
+    { label: 'Assets', path: '/assets', icon: Boxes, category: 'Go to' },
+    { label: 'Facility hierarchy', path: '/facilities', icon: Building2, category: 'Go to' },
+    { label: 'Reports & KPIs', path: '/reports', icon: FileSpreadsheet, category: 'Go to' },
+    ...(lead ? [{ label: 'Billing', path: '/billing', icon: FileSpreadsheet, category: 'Go to' }] : []),
+    ...(isAdmin ? [{ label: 'Users', path: '/users', icon: Users, category: 'Go to' }] : []),
+    ...(isAdmin || isManager ? [{ label: 'System settings', path: '/settings', icon: Settings, category: 'Go to' }] : []),
   ];
 
   // Filtered Results
@@ -69,7 +76,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
         .filter(
           (w) =>
             w.wo_number.toLowerCase().includes(q) ||
-            w.problem_description.toLowerCase().includes(q) ||
+            (w.problem_description || '').toLowerCase().includes(q) ||
             w.building?.name?.toLowerCase().includes(q)
         )
         .slice(0, 4)
@@ -87,13 +94,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     : [];
 
   const matchedPPM = q
-    ? schedules
-        .filter(
-          (p) =>
-            p.schedule_number.toLowerCase().includes(q) ||
-            p.plan?.title?.toLowerCase().includes(q)
-        )
-        .slice(0, 3)
+    ? plans.filter((p) => p.ppm_code.toLowerCase().includes(q) || p.title.toLowerCase().includes(q)).slice(0, 3)
     : [];
 
   const allResults = [
@@ -101,8 +102,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     ...matchedWos.map((w) => ({
       type: 'wo',
       id: w.id,
-      label: `${w.wo_number} — ${w.priority} Priority`,
-      sub: w.problem_description.slice(0, 50) + '...',
+      label: `${w.wo_number} — ${priorityOf(w)} · ${w.status}`,
+      sub: (w.problem_description || '').slice(0, 60),
       icon: ClipboardList,
       path: `/work-orders/${w.id}`,
     })),
@@ -117,10 +118,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     ...matchedPPM.map((p) => ({
       type: 'ppm',
       id: p.id,
-      label: `${p.schedule_number} — ${p.plan?.title || 'PPM Run'}`,
-      sub: `Due: ${p.due_date} | ${p.status}`,
+      label: `${p.ppm_code} — ${p.title}`,
+      sub: `${p.frequency} · next due ${p.next_due_date}`,
       icon: CalendarCheck2,
-      path: `/ppm/planner`,
+      path: `/ppm/plans`,
     })),
   ];
 

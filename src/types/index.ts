@@ -509,6 +509,7 @@ export interface SlaPolicy {
   response_minutes: number;
   restoration_minutes?: number | null;
   resolution_minutes: number;
+  pause_on_hold?: boolean;
   color_hex?: string | null;
 }
 

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Hierarchy, hierarchyService, roomPath, roomQrValue } from '../../api/hierarchy';
+import { Hierarchy, assetQrValue, hierarchyService, roomPath, roomQrValue } from '../../api/hierarchy';
 
 /**
  * Printable QR label sheets for rooms and assets.
@@ -54,7 +54,7 @@ export const QRLabels: React.FC = () => {
       .filter((a) => !buildingId || a.building_id === buildingId)
       .map((a) => ({
         id: a.id,
-        qr: a.asset_number,
+        qr: assetQrValue(a.asset_number),
         title: a.name,
         code: a.asset_number,
         path: roomPath(h, a.location_id).join(' / '),

@@ -40,7 +40,7 @@ export const isSupabaseConfigured = () => {
 const SEED_USERS: UserProfile[] = [
   {
     id: '90000000-0000-0000-0000-000000000001',
-    email: 'admin@shever.com',
+    email: 'admin@ocs-demo.local',
     full_name: 'Saif Al-Nuaimi (Admin)',
     phone: '+971 50 100 2000',
     role_id: 'admin',
@@ -50,7 +50,7 @@ const SEED_USERS: UserProfile[] = [
   },
   {
     id: '90000000-0000-0000-0000-000000000002',
-    email: 'manager@shever.com',
+    email: 'manager@ocs-demo.local',
     full_name: 'David Reynolds (FM Manager)',
     phone: '+971 50 200 3000',
     role_id: 'fm_manager',
@@ -60,7 +60,7 @@ const SEED_USERS: UserProfile[] = [
   },
   {
     id: '90000000-0000-0000-0000-000000000003',
-    email: 'supervisor@shever.com',
+    email: 'supervisor@ocs-demo.local',
     full_name: 'Hamad Al-Maktoum (Supervisor)',
     phone: '+971 50 300 4000',
     role_id: 'supervisor',
@@ -70,7 +70,7 @@ const SEED_USERS: UserProfile[] = [
   },
   {
     id: '90000000-0000-0000-0000-000000000004',
-    email: 'technician@shever.com',
+    email: 'technician@ocs-demo.local',
     full_name: 'Rashid Khan (HVAC Technician)',
     phone: '+971 50 400 5000',
     role_id: 'technician',
@@ -80,7 +80,7 @@ const SEED_USERS: UserProfile[] = [
   },
   {
     id: '90000000-0000-0000-0000-000000000005',
-    email: 'tech.elec@shever.com',
+    email: 'tech.elec@ocs-demo.local',
     full_name: 'Vikram Sharma (Electrical Tech)',
     phone: '+971 50 500 6000',
     role_id: 'technician',
@@ -608,15 +608,7 @@ let memoryMaterials = loadStore('shever_materials', [...SEED_MATERIALS]);
 let memoryChecklists = loadStore<PPMChecklist[]>('shever_ppm_checklists', []);
 let memoryChecklistItems = loadStore<PPMChecklistItem[]>('shever_ppm_checklist_items', []);
 let memorySettings = loadStore('shever_settings', { ...SEED_SETTINGS });
-let memoryAuditLogs = loadStore<AuditLog[]>('shever_audit_logs', [
-  {
-    id: '80000000-0000-0000-0000-000000000001',
-    user_email: 'admin@shever.com',
-    action: 'SYSTEM_INITIALIZED',
-    module: 'CORE',
-    created_at: new Date(Date.now() - 3600 * 1000).toISOString(),
-  }
-]);
+let memoryAuditLogs = loadStore<AuditLog[]>('shever_audit_logs', []);
 
 // Helper to populate relations
 const populateWorkOrder = (wo: WorkOrder): WorkOrder => {
@@ -1238,7 +1230,7 @@ export const cafmDataService = {
     const newUser: UserProfile = {
       id: userData.id || newId(),
       employee_id: userData.employee_id || `EMP-${seq}`,
-      email: (userData.email || `user${Date.now()}@shever.com`).trim().toLowerCase(),
+      email: (userData.email || `user${Date.now()}@ocs-demo.local`).trim().toLowerCase(),
       full_name: userData.full_name || 'New Staff User',
       phone: userData.phone || '+971 50 000 0000',
       role_id: userData.role_id || 'technician',
@@ -1523,10 +1515,11 @@ export const cafmDataService = {
   async getAuditLogs(): Promise<AuditLog[]> {
     const cloud = await cloudRead<AuditLog>(
       'audit_logs',
-      (q) => q.order('created_at', { ascending: false }).limit(50),
+      (q) => q.order('created_at', { ascending: false }).limit(500),
       'shever_audit_logs'
     );
-    if (cloud && cloud.length > 0) {
+    // An empty cloud log is a real answer; never fall back to sample entries.
+    if (cloud) {
       memoryAuditLogs = cloud;
       return cloud;
     }

@@ -71,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
     {
       title: 'ANALYTICS',
       items: [
-        { name: 'Reports & Export', path: '/reports', icon: FileSpreadsheet },
+        { name: 'Reports & KPIs', path: '/reports', icon: FileSpreadsheet },
         { name: 'PPM Compliance', path: '/ppm/dashboard', icon: Gauge },
         ...(lead ? [{ name: 'Job Costing', path: '/costing', icon: Coins }] : []),
       ],
@@ -85,7 +85,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
             title: 'ADMINISTRATION',
             items: [
               { name: 'Users & Roles', path: '/users', icon: Users },
-              { name: 'Trades & Types', path: '/settings/categories', icon: Layers },
+              { name: 'Job Types', path: '/settings/job-types', icon: ClipboardList },
+              { name: 'Trades & Categories', path: '/settings/categories', icon: Layers },
               { name: 'Rates & Billing', path: '/settings/costing', icon: BadgeDollarSign },
               { name: 'System Settings', path: '/settings', icon: Settings },
               { name: 'Audit Trail', path: '/audit', icon: ShieldAlert },

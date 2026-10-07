@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowRight,
@@ -36,6 +36,9 @@ const HIGHLIGHTS = [
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  // Where they were heading before being asked to sign in (QR label, link).
+  const from = (location.state as { from?: string } | null)?.from;
   const { login, error: authError } = useAuth();
   const { isDark, setTheme } = useTheme();
 
@@ -53,7 +56,7 @@ export const Login: React.FC = () => {
 
     try {
       const success = await login(identifier, password);
-      if (success) navigate('/dashboard');
+      if (success) navigate(from && from.startsWith('/') && !from.startsWith('//') ? from : '/dashboard', { replace: true });
       // On failure the reason is already in authError (wrong password vs.
       // database not set up) and is rendered below.
     } catch (err: any) {
