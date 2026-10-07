@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'SHEVER TECHNICAL',
+                  'OCS CAFM',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20,

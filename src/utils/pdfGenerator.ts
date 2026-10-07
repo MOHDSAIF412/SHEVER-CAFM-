@@ -84,33 +84,35 @@ export const generateWorkOrderPDF = async (wo: WorkOrder) => {
 
   // Fetch everything up front so the layout below stays synchronous.
   const [logo, beforeImg, afterImg] = await Promise.all([
-    loadImage('/shever-logo.png'),
+    loadImage('/ocs-logo-white.png'),
     loadImage(photoUrlFor(wo, 'before')),
     loadImage(photoUrlFor(wo, 'after')),
   ]);
 
   // ---------------------------------------------------------------- header
-  doc.setFillColor(15, 23, 42); // slate-900
+  doc.setFillColor(41, 55, 113); // OCS Blue
   doc.rect(0, 0, 210, 32, 'F');
+  doc.setFillColor(241, 95, 34); // OCS Orange rule
+  doc.rect(0, 32, 210, 1.2, 'F');
 
   let textX = 14;
   if (logo) {
-    doc.addImage(logo.dataUrl, logo.format, 14, 6, 20, 20);
-    textX = 39;
+    doc.addImage(logo.dataUrl, logo.format, 14, 7, 34, 18.4);
+    textX = 54;
   }
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(15);
   doc.setFont('helvetica', 'bold');
-  doc.text('SHEVER TECHNICAL SERVICES', textX, 14);
+  doc.text('OCS FACILITIES SERVICES', textX, 14);
 
   doc.setFontSize(8.5);
-  doc.setTextColor(45, 212, 191); // teal
+  doc.setTextColor(248, 158, 118); // OCS Orange, lightened for the blue band
   doc.text('FACILITIES MANAGEMENT & CAFM CLIENT SERVICE REPORT', textX, 20);
 
   doc.setFontSize(7.5);
   doc.setTextColor(203, 213, 225);
-  doc.text('Dubai, UAE | support@shevertechnical.com | +971 4 388 9900', textX, 26);
+  doc.text('United Arab Emirates | ocs.com/ae', textX, 26);
 
   doc.setFontSize(11);
   doc.setTextColor(255, 255, 255);
@@ -251,7 +253,7 @@ export const generateWorkOrderPDF = async (wo: WorkOrder) => {
   doc.setFontSize(6.5);
   doc.setTextColor(148, 163, 184);
   doc.text(
-    `Generated ${new Date().toLocaleString()} by the Shever Technical Services CAFM platform.`,
+    `Generated ${new Date().toLocaleString()} by the OCS CAFM platform.`,
     14,
     288
   );

@@ -104,20 +104,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, setCollapsed, mobil
       <div className="flex items-center justify-between h-14 px-3.5 border-b border-slate-200 bg-slate-50/80 dark:border-slate-800/80 dark:bg-slate-950/40">
         <NavLink to="/" className="flex items-center space-x-2.5 overflow-hidden">
           <img
-            src="/shever-logo.png"
-            alt="Shever"
-            className="w-7 h-7 rounded-md object-contain shrink-0 bg-white/5 p-0.5 border border-white/10"
+            src={collapsed ? '/ocs-mark-white.png' : '/ocs-logo-white.png'}
+            alt="OCS"
+            className={`${collapsed ? 'w-9' : 'h-8'} object-contain shrink-0 hidden dark:block`}
+          />
+          <img
+            src={collapsed ? '/ocs-mark.png' : '/ocs-logo.png'}
+            alt="OCS"
+            className={`${collapsed ? 'w-9' : 'h-8'} object-contain shrink-0 dark:hidden`}
             onError={(e) => {
               (e.target as HTMLElement).style.display = 'none';
             }}
           />
           {!collapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-extrabold tracking-wider text-slate-900 dark:text-white truncate">
-                SHEVER
+              <span className="text-xs font-bold tracking-wider text-ocs-blue dark:text-white truncate">
+                CAFM
               </span>
-              <span className="text-[9px] font-semibold text-teal-400 tracking-wider truncate uppercase">
-                CAFM Enterprise
+              <span className="text-[9px] font-semibold text-orange-500 tracking-wider truncate uppercase">
+                Facilities
               </span>
             </div>
           )}

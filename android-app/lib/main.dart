@@ -7,18 +7,18 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
     const ProviderScope(
-      child: SheverCafmApp(),
+      child: OcsCafmApp(),
     ),
   );
 }
 
-class SheverCafmApp extends StatelessWidget {
-  const SheverCafmApp({super.key});
+class OcsCafmApp extends StatelessWidget {
+  const OcsCafmApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Shever CAFM Mobile',
+      title: 'OCS CAFM',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

@@ -346,10 +346,10 @@ export const Dashboard: React.FC = () => {
   // Everything below runs on every render, above the loading return, so
   // the hook order stays identical between renders.
   const priorityData = [
-    { name: 'Emergency', count: filteredWorkOrders.filter((w) => w.priority === 'Emergency').length, fill: '#EF4444' },
-    { name: 'High', count: filteredWorkOrders.filter((w) => w.priority === 'High').length, fill: '#F97316' },
-    { name: 'Medium', count: filteredWorkOrders.filter((w) => w.priority === 'Medium').length, fill: '#F59E0B' },
-    { name: 'Low', count: filteredWorkOrders.filter((w) => w.priority === 'Low').length, fill: '#10B981' },
+    { name: 'Emergency', count: filteredWorkOrders.filter((w) => w.priority === 'Emergency').length, fill: '#B91C2A' },
+    { name: 'High', count: filteredWorkOrders.filter((w) => w.priority === 'High').length, fill: '#F57A48' },
+    { name: 'Medium', count: filteredWorkOrders.filter((w) => w.priority === 'Medium').length, fill: '#F15F22' },
+    { name: 'Low', count: filteredWorkOrders.filter((w) => w.priority === 'Low').length, fill: '#00AE4D' },
   ];
 
   // ---- figures the reference layout needs, all measured ---------------------
@@ -399,7 +399,7 @@ export const Dashboard: React.FC = () => {
       const name = w.category?.name || 'Uncategorised';
       tally.set(name, (tally.get(name) || 0) + 1);
     });
-    const palette = ['#3B82F6', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444'];
+    const palette = ['#293771', '#F15F22', '#00AE4D', '#808285', '#B91C2A'];
     return [...tally.entries()]
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
@@ -410,14 +410,14 @@ export const Dashboard: React.FC = () => {
 
   /** Donut of the live pipeline. */
   const workOrderDonut = [
-    { name: 'Open', value: openCount, fill: '#3B82F6' },
-    { name: 'In Progress', value: inProgressCount, fill: '#F59E0B' },
-    { name: 'Resolved', value: totalClosedOrCompleted, fill: '#10B981' },
+    { name: 'Open', value: openCount, fill: '#293771' },
+    { name: 'In Progress', value: inProgressCount, fill: '#F15F22' },
+    { name: 'Resolved', value: totalClosedOrCompleted, fill: '#00AE4D' },
   ].filter((d) => d.value > 0);
 
   const slaDonut = [
-    { name: 'Achieved', value: metSlaCount, fill: '#10B981' },
-    { name: 'Breached', value: resolvedWos.length - metSlaCount, fill: '#EF4444' },
+    { name: 'Achieved', value: metSlaCount, fill: '#00AE4D' },
+    { name: 'Breached', value: resolvedWos.length - metSlaCount, fill: '#B91C2A' },
     { name: 'No target', value: totalFilteredCount - resolvedWos.length, fill: '#E2E8F0' },
   ].filter((d) => d.value > 0);
 
@@ -538,15 +538,15 @@ export const Dashboard: React.FC = () => {
             className="pointer-events-none absolute right-0 top-0 hidden h-[150px] w-[62%] md:block"
           >
             <g opacity="0.9">
-              <rect x="300" y="70" width="34" height="80" rx="2" fill="#BFDBFE" />
-              <rect x="340" y="46" width="26" height="104" rx="2" fill="#93C5FD" />
-              <rect x="372" y="82" width="30" height="68" rx="2" fill="#DBEAFE" />
-              <rect x="408" y="34" width="24" height="116" rx="2" fill="#60A5FA" />
-              <rect x="438" y="66" width="32" height="84" rx="2" fill="#BFDBFE" />
-              <rect x="476" y="52" width="22" height="98" rx="2" fill="#93C5FD" />
-              <rect x="504" y="88" width="34" height="62" rx="2" fill="#DBEAFE" />
-              <rect x="544" y="58" width="26" height="92" rx="2" fill="#60A5FA" />
-              <rect x="576" y="78" width="30" height="72" rx="2" fill="#BFDBFE" />
+              <rect x="300" y="70" width="34" height="80" rx="2" fill="#B7BFE0" />
+              <rect x="340" y="46" width="26" height="104" rx="2" fill="#8F9BCD" />
+              <rect x="372" y="82" width="30" height="68" rx="2" fill="#DBDFEF" />
+              <rect x="408" y="34" width="24" height="116" rx="2" fill="#3F4E95" />
+              <rect x="438" y="66" width="32" height="84" rx="2" fill="#B7BFE0" />
+              <rect x="476" y="52" width="22" height="98" rx="2" fill="#8F9BCD" />
+              <rect x="504" y="88" width="34" height="62" rx="2" fill="#DBDFEF" />
+              <rect x="544" y="58" width="26" height="92" rx="2" fill="#3F4E95" />
+              <rect x="576" y="78" width="30" height="72" rx="2" fill="#B7BFE0" />
               {/* windows */}
               {[310, 348, 380, 414, 446, 482, 512, 550, 584].map((x, i) => (
                 <g key={x} fill="#FFFFFF" opacity="0.65">
@@ -556,20 +556,20 @@ export const Dashboard: React.FC = () => {
                 </g>
               ))}
               {/* turbine */}
-              <g stroke="#34D399" strokeWidth="2.5" strokeLinecap="round" fill="none">
+              <g stroke="#00AE4D" strokeWidth="2.5" strokeLinecap="round" fill="none">
                 <path d="M614 150V96" />
                 <path d="M614 96l16-10M614 96l-16-10M614 96v-18" />
               </g>
               {/* solar row */}
-              <g fill="#38BDF8" opacity="0.8">
+              <g fill="#F15F22" opacity="0.8">
                 <rect x="256" y="128" width="28" height="8" rx="1" transform="rotate(-12 270 132)" />
                 <rect x="256" y="140" width="28" height="8" rx="1" transform="rotate(-12 270 144)" />
               </g>
               {/* trees */}
               {[236, 292, 466, 534].map((x) => (
                 <g key={x}>
-                  <rect x={x + 4} y="138" width="3" height="12" fill="#A7F3D0" />
-                  <circle cx={x + 5.5} cy="134" r="9" fill="#34D399" opacity="0.75" />
+                  <rect x={x + 4} y="138" width="3" height="12" fill="#8FE0B2" />
+                  <circle cx={x + 5.5} cy="134" r="9" fill="#00AE4D" opacity="0.75" />
                 </g>
               ))}
             </g>
@@ -719,10 +719,10 @@ export const Dashboard: React.FC = () => {
 
             <ul className="min-w-0 flex-1 space-y-2 text-[12px]">
               {[
-                { c: '#3B82F6', label: 'Open', n: openCount },
-                { c: '#F59E0B', label: 'In Progress', n: inProgressCount },
-                { c: '#10B981', label: 'Resolved', n: completedCount },
-                { c: '#8B5CF6', label: 'Closed', n: closedCount },
+                { c: '#293771', label: 'Open', n: openCount },
+                { c: '#F15F22', label: 'In Progress', n: inProgressCount },
+                { c: '#00AE4D', label: 'Resolved', n: completedCount },
+                { c: '#808285', label: 'Closed', n: closedCount },
               ].map((r) => (
                 <li key={r.label} className="flex items-center gap-2">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.c }} />
@@ -753,8 +753,8 @@ export const Dashboard: React.FC = () => {
                 <XAxis dataKey="day" stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="#94A3B8" fontSize={10} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10, border: '1px solid #E2E8F0' }} />
-                <Line type="monotone" dataKey="count" name="Logged" stroke="#3B82F6" strokeWidth={2}
-                      dot={{ r: 3, fill: '#3B82F6' }} activeDot={{ r: 5 }} />
+                <Line type="monotone" dataKey="count" name="Logged" stroke="#293771" strokeWidth={2}
+                      dot={{ r: 3, fill: '#293771' }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -841,8 +841,8 @@ export const Dashboard: React.FC = () => {
                 <YAxis stroke="#94A3B8" fontSize={9} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 10 }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 10 }} />
-                <Bar dataKey="reactive" name="Reactive" fill="#FB7185" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="preventive" name="Preventive" fill="#34D399" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="reactive" name="Reactive" fill="#F15F22" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="preventive" name="Preventive" fill="#00AE4D" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -913,7 +913,7 @@ export const Dashboard: React.FC = () => {
                                 data={[{ value: assetHealth.percent }]}>
                   <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
                   <RadialBar background={{ fill: isDark ? '#1e293b' : '#F1F5F9' }} dataKey="value" cornerRadius={8}
-                            fill={assetHealth.percent >= 80 ? '#10B981' : assetHealth.percent >= 50 ? '#F59E0B' : '#EF4444'} />
+                            fill={assetHealth.percent >= 80 ? '#00AE4D' : assetHealth.percent >= 50 ? '#F15F22' : '#B91C2A'} />
                 </RadialBarChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-x-0 bottom-2 flex flex-col items-center">

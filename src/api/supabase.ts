@@ -94,7 +94,7 @@ const SEED_BUILDINGS: Building[] = [
   {
     id: 'c0000000-0000-0000-0000-000000000001',
     code: 'BLD-ST-01',
-    name: 'Shever Corporate Tower',
+    name: 'OCS Demo Tower',
     address: 'Sheikh Zayed Road, Financial District',
     city: 'Dubai',
     total_floors: 35,
@@ -542,9 +542,9 @@ const SEED_MATERIALS: Material[] = [
 
 const SEED_SETTINGS: SystemSettings = {
   id: 1,
-  company_name: 'Shever Technical Services',
-  company_logo_url: '/shever-logo.png',
-  contact_email: 'support@shevertechnical.com',
+  company_name: 'OCS',
+  company_logo_url: '/ocs-logo.png',
+  contact_email: '',
   contact_phone: '+971 4 388 9900',
   currency: 'AED',
   wo_prefix: 'WO',
