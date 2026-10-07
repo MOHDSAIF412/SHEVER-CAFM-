@@ -51,7 +51,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose 
     { label: 'Work Orders Dashboard', path: '/work-orders', icon: ClipboardList, category: 'Navigation' },
     { label: 'PPM Schedules & Calendar', path: '/ppm/schedules', icon: CalendarCheck2, category: 'Navigation' },
     { label: 'Asset Intelligence Registry', path: '/assets', icon: Boxes, category: 'Navigation' },
-    { label: 'Facility Hierarchy (Buildings)', path: '/facilities/buildings', icon: Building2, category: 'Navigation' },
+    { label: 'Facility Hierarchy', path: '/facilities', icon: Building2, category: 'Navigation' },
     { label: 'Reports & Analytics Center', path: '/reports', icon: FileSpreadsheet, category: 'Navigation' },
     { label: 'User & Access Management', path: '/users', icon: Users, category: 'Navigation' },
     { label: 'System Configuration', path: '/settings', icon: Settings, category: 'Navigation' },

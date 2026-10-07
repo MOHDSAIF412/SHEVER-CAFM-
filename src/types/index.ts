@@ -24,8 +24,29 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface Facility {
+  id: string;
+  contract_id?: string | null;
+  code: string;
+  name: string;
+  address?: string;
+  city?: string;
+  qr_token?: string | null;
+  is_active?: boolean;
+  created_at: string;
+}
+
+export interface Zone {
+  id: string;
+  floor_id: string;
+  code: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Building {
   id: string;
+  facility_id?: string | null;
   code: string;
   name: string;
   address?: string;
@@ -53,6 +74,10 @@ export interface Location {
   name: string;
   room_number?: string;
   zone?: string;
+  zone_id?: string | null;
+  space_type?: string;
+  area_sqm?: number | null;
+  qr_token?: string | null;
   created_at: string;
   floor?: Floor;
 }
@@ -108,6 +133,15 @@ export interface Asset {
   qr_code_url?: string;
   photo_url?: string;
   specifications?: Record<string, any>;
+  facility_id?: string | null;
+  zone_id?: string | null;
+  parent_asset_id?: string | null;
+  nesting_reference?: string;
+  position_code?: string;
+  barcode?: string;
+  purchase_cost?: number | null;
+  expected_life_years?: number | null;
+  condition_score?: number | null;
   created_at: string;
   building?: Building;
   floor?: Floor;
