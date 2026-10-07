@@ -233,6 +233,7 @@ export interface WorkOrder {
   client_comment?: string | null;
   cancel_reason?: string | null;
   job_type?: JobType;
+  checklist_id?: string | null;
   created_at: string;
   updated_at: string;
 
@@ -300,6 +301,7 @@ export interface PPMChecklist {
   description?: string;
   is_active: boolean;
   created_at: string;
+  applies_to?: string;
   category?: Category;
   items?: PPMChecklistItem[];
 }
@@ -315,6 +317,10 @@ export interface PPMChecklistItem {
   max_value?: number;
   is_mandatory: boolean;
   dropdown_options?: string[];
+  photo_required?: boolean;
+  raise_corrective_on_fail?: boolean;
+  section?: string | null;
+  fail_priority?: SlaPriority;
 }
 
 export type PPMFrequency = 'Daily' | 'Weekly' | 'Monthly' | 'Quarterly' | 'Half-Yearly' | 'Yearly' | 'Custom';
